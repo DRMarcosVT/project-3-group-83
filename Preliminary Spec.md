@@ -230,8 +230,8 @@ How we integrate:
 | Method signatures | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
 | Where validation lives | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
 | Test plan | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Division of work | Raghul Jayaprakash | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Revised scope | Raghul Jayaprakash | Drafted with GenAI (Claude); [who checked or revised it, and how] |
+| Division of work | Raghul Jayaprakash | Drafted with GenAI (Claude); reviewed task assignments and integration plan. |
+| Revised scope | Raghul Jayaprakash | Drafted with GenAI (Claude); reviewed and revised for accuracy and consistency. |
 
 ## GenAI note
 
