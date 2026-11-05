@@ -18,7 +18,7 @@ Project Name: No Cutting!
 
 ## System diagram
 
-A UML class diagram with one box per package. Arrows run from the class that holds the reference to the class it uses, and each label says what moves along it. The only arrows that cross a package line start at `OrderController`, plus the dashed ones where `ConsoleView` reads `Order`, `Trade` and `Side`. Nothing points out of `model`.
+Arrows run from the class that holds the reference to the class it uses, and each label says what moves along it. The only arrows that cross a package line start at `OrderController`, plus the dashed ones where `ConsoleView` reads `Order`, `Trade` and `Side`.
 
 ```mermaid
 classDiagram
@@ -108,15 +108,13 @@ classDiagram
 
 ## The model / view boundary
 
-What the view knows: the classes `Order`, `Trade` and `Side`, and their getters. `showBook` and `showTrades` receive lists that are already in display order, so the view prints them top to bottom.
+The view shows instances of `Order`, `Trade`, and `Side`. It also shows the trades and orderbook returned by the `OrderBook` methods `getTrades()`, `getBids()`, and `getAsks()`.
 
-What the view deliberately does not know: `OrderBook`, the TreeMaps and `LinkedQueue`; how orders get matched; what makes an order invalid. It prints whatever error message it is handed. It holds no reference to the book and never calls `submit`. It cannot change an `Order` either: the one method that changes an order, `fill`, is package-private inside `model`.
+The view only reads `Order`, `Trade` and `Side` objects through their getters. It holds no reference to the `OrderBook`, so it has no access to the private TreeMaps or the `LinkedQueue`s inside them, and it cannot change an order.
 
-The model knows nothing about the other two packages. No class in `model` uses `Scanner` or `System.out`.
+The view is updated by `run` calling `showBook()` and `showTrades()` with the new lists of both. If a `submit()` call is rejected, it prints the error message only since the book and trades did not change.
 
-How the view learns the model changed: the controller tells it. After every `submit` that succeeds, `run` calls `showBook(book.getBids(), book.getAsks())` and `showTrades(book.getTrades())` with fresh lists. After a rejected `submit` it calls `showError` only, since the book did not change.
-
-Why this fits: the book changes only inside `submit`, and `run` is the only caller of `submit`, so the controller already knows the moment of every change. There is one view. An observer would add a listener interface and a list of listeners to tell the controller about a change it caused itself. If we build the GUI stretch goal, a button handler makes the same three calls.
+This mechanism fits the system because only `run` calls `submit` and only `submit` can change the order book, so `run` always knows when the book has changed and can redraw the view right then.
 
 ## Data & state
 
@@ -124,8 +122,8 @@ Where the Queue lives: inside `OrderBook`, as the values of the two TreeMaps. Th
 
 | Class | Field | Type | Changes after construction? |
 |---|---|---|---|
-| `LinkedQueue<T>` | `head` | `Node<T>` | Yes, on `dequeue` and on the first `enqueue` |
-| | `tail` | `Node<T>` | Yes, on every `enqueue` |
+| `LinkedQueue<T>` | `head` | `Node<T>` | Yes, on every `dequeue` and on an `enqueue` into an empty queue |
+| | `tail` | `Node<T>` | Yes, on every `enqueue`, and set to `null` when `dequeue` empties the queue |
 | `Node<T>` | `data` | `T` | No |
 | | `next` | `Node<T>` | Yes, when the next item is enqueued |
 | `Order` | `trader` | `String` | No |
@@ -175,26 +173,26 @@ How `submit` works:
 
 1. Check the input (see Where validation lives). If a check fails, throw before touching the book.
 2. Find the best price on the other side: the lowest ask for a BUY, the highest bid for a SELL. It matches when the ask is at or below the buyer's price, or the bid is at or above the seller's price.
-3. While the new order has shares left and the best price matches: `peek` the oldest order at that price, trade the smaller of the two share counts at the waiting order's price, add a `Trade` to `trades`, and lower `remaining` on both orders. `dequeue` the waiting order when it reaches 0, and remove the price from the TreeMap when its queue is empty.
+3. While the new order has shares left and the best price matches: `peek` at the head of that price's queue, which holds the oldest order, trade the smaller of the two share counts at the waiting order's price, add a `Trade` to `trades`, and lower `remaining` on both orders. `dequeue` the waiting order when it reaches 0, and remove the price from the TreeMap when its queue is empty.
 4. If the new order still has shares left, `enqueue` it at its own price on its own side, making a new queue if the price is new.
 
 ### Controller: `OrderController`
 
 | Signature | Behavior | On bad input |
 |---|---|---|
-| `OrderController(OrderBook book, ConsoleView view)` | Stores the book and the view it connects. | No check: `main` is the only caller and always passes new objects. |
+| `OrderController(OrderBook book, ConsoleView view)` | Stores the book and the view it connects. | No check: `main` calls it once, passing the one `OrderBook` and `ConsoleView` it just made, so neither can be `null`. |
 | `void run()` | Repeats: asks for trader, side, quantity and price, calls `submit`, shows the book and the trade log. Ends when the user types `quit` at the trader prompt. | Calls `showError` with a message and asks for the order again; the book is unchanged. |
 | `static void main(String[] args)` | Makes one `OrderBook`, one `ConsoleView` and one `OrderController`, then calls `run`. | Ignores `args`. |
 
 ### View: `ConsoleView`
 
-| Signature | Behavior |
-|---|---|
-| `ConsoleView()` | Opens a `Scanner` on `System.in`. |
-| `String ask(String prompt)` | Prints `prompt` and returns the line the user types. |
-| `void showBook(ArrayList<Order> bids, ArrayList<Order> asks)` | Prints both waiting lines, one order per row. |
-| `void showTrades(ArrayList<Trade> trades)` | Prints the trade log. |
-| `void showError(String message)` | Prints the message. |
+| Signature | Behavior | On bad input |
+|---|---|---|
+| `ConsoleView()` | Opens a `Scanner` on `System.in`. | Takes no input. |
+| `String ask(String prompt)` | Prints `prompt` and returns the line the user types. | Returns any text unchanged; `run` checks it. |
+| `void showBook(ArrayList<Order> bids, ArrayList<Order> asks)` | Prints both waiting lines, one order per row. | No check: `run` passes the lists from `getBids` and `getAsks`, which are never `null`. An empty list prints an empty side. |
+| `void showTrades(ArrayList<Trade> trades)` | Prints the trade log. | No check, for the same reason; an empty list prints an empty log. |
+| `void showError(String message)` | Prints the message. | No check: every message comes from `run`. |
 
 ## Where validation lives
 
@@ -208,12 +206,12 @@ A rejected input never changes the book. For every row below the user sees a mes
 | Blank trader name | `OrderBook.submit` | Same. | Same. |
 | Self-trade: the trader already has a waiting order on the other side at a price the new order matches | `OrderBook.submit` | Same. Checked before any matching starts. | Only the book knows which orders are waiting. |
 | Text ("ten") for quantity or price | `OrderController.run`, when `Integer.parseInt` fails | `run` calls `showError`; `submit` is never called. | `submit` takes an `int`, so text has to become a number before the model is called. Reading typed text is the controller's job. |
-| A side other than buy/sell | `OrderController.run`, when `Side.valueOf` fails | `run` calls `showError`; `submit` is never called. | `Side` is an enum, so the model cannot be handed a third side. |
+| A side other than buy/sell | `OrderController.run`, when `Side.valueOf(text.trim().toUpperCase())` fails | `run` calls `showError`; `submit` is never called. | `Side` is an enum, so the model cannot be handed a third side. |
 | Cancelling a filled or nonexistent order ID (stretch) | `OrderBook.cancel(int orderId)`, added only if we build cancellation | Throws `IllegalArgumentException`; `run` catches it and calls `showError`. | Only the book knows which IDs are still waiting. A filled order has left its queue, so both cases look the same. |
 
 ## Test plan
 
-`LinkedQueueTest` and `OrderBookTest` are JUnit classes in the `model` package. They import nothing from `view` or `controller`, use no `Scanner` and print nothing: every expected result below is a return value or an exception. Methods that take no input have no bad input, so their second case is an empty queue, an empty book, or a caller changing the returned list.
+`LinkedQueueTest` and `OrderBookTest` run in JUnit with no view or controller: they create only model objects and check return values and exceptions. Methods that take no input get an edge case, such as an empty queue or book, in place of a bad-input case.
 
 | Method | Normal case and expected result | Bad-input case and expected result |
 |---|---|---|
@@ -234,43 +232,42 @@ A rejected input never changes the book. For every row below the user sees a mes
 
 | Piece | Owner | Builds |
 |---|---|---|
-| Model | [name] | `LinkedQueue`, `Side`, `Order`, `Trade`, `OrderBook`, `LinkedQueueTest`, `OrderBookTest` |
-| View | [name] | `ConsoleView` |
-| Controller | [name] | `OrderController` |
+| Model | Marcos Salas | `LinkedQueue`, `Side`, `Order`, `Trade`, `OrderBook`, `LinkedQueueTest`, `OrderBookTest` |
+| View | Riya Shah | `ConsoleView` |
+| Controller | Raghul | `OrderController` |
 
 How we integrate:
 
 1. The signatures in this spec are the contract. Changing one needs all three of us to agree first.
-2. We share one GitHub repo. Each owner works on their own branch and merges into `main` once their code compiles and their tests pass.
+2. We share one GitHub repo with one branch per piece: `model` for Marcos, `view` for Riya and `controller` for Raghul. Each owner works only on their branch and merges it into `main` once their code compiles and their tests pass.
 3. The view and controller owners can start right away: `ConsoleView` needs only `Order` and `Trade`, which the model owner pushes first as fields and getters.
-4. First join: the controller owner, [name], merges all three pieces on [date], as soon as `LinkedQueueTest` and the first `OrderBookTest` case pass. They run `main` and type in the three `submit` normal cases from the test plan by hand, checking the printed book against the expected results.
+4. First join: the controller owner, Raghul, merges all three pieces on Monday, November 9 (prospective date), as soon as `LinkedQueueTest` and the first `OrderBookTest` case pass. They run `main` and type in the three `submit` normal cases from the test plan by hand, checking the printed book against the expected results.
 
 ## Revised scope
 
 | What changed since the scope doc | Why | Came from | Cost or saving in the build |
 |---|---|---|---|
-| Prices are whole dollars, stored as an `int`. The scope did not say. | An `int` works as a TreeMap key with no rounding, and "10.5" is rejected by the same check as "ten". | GenAI (Claude) | Saves a decimal-format check and rounding code. Costs the user the ability to enter cents. |
-| Self-trades are blocked by rejecting the new order when the trader has a waiting order on the other side at a matching price. The scope said "blocked" and no more. | Rejecting before matching starts keeps our rule that a rejected input never changes the book. | GenAI (Claude) | Costs one loop over the matching prices in `submit`. |
-| `LinkedQueue` gets a fifth method, `toList()`. | The view has to show every waiting order, and dequeueing them to read them would empty the book. The self-trade check reads the queue the same way. | GenAI (Claude) | Costs one short method and one test pair. |
+| Prices are whole dollars, stored as an `int`. The scope did not say. | An `int` works as a TreeMap key with no rounding, and "10.5" is rejected by the same check as "ten". | Group discussion | Saves a decimal-format check and rounding code. Costs the user the ability to enter cents. |
+| Self-trades are blocked by rejecting the new order when the trader has a waiting order on the other side at a matching price. The scope said "blocked" and no more. | Rejecting before matching starts keeps our rule that a rejected input never changes the book. | Marcos's own reflection | Costs one loop over the matching prices in `submit`. |
+| `LinkedQueue` gets a fifth method, `toList()`. | The view has to print every waiting order in the terminal, and dequeueing them to read them would empty the book. The self-trade check reads the queue the same way. | Group discussion | Costs one short method and one test pair. |
 | The max is 10,000 for both quantity and price. The scope said "a set max". | 10,000 times 10,000 still fits in an `int`, so the volume stretch goal cannot overflow. | GenAI (Claude) | Costs two constants. |
-| A trade happens at the waiting order's price. The scope did not say. | The waiting order committed to its price first, the same reasoning as our FIFO rule. | GenAI (Claude) | Costs nothing: one line in `submit`. |
-| MVP orders have no ID. Cancellation stays a stretch goal, and so does our open question about removing an order from the middle of a queue. | Nothing in the MVP looks an order up by ID. | GenAI (Claude) | Saves an ID counter and a remove method on `LinkedQueue`. |
+| A trade happens at the waiting order's price. The scope did not say. | The waiting order committed to its price first, the same reasoning as our FIFO rule. | Marcos's own reflection | Costs nothing: one line in `submit`. |
 
 ## Work Attribution
 
 | Section | Team member(s) | Contribution (how) |
 |---|---|---|
-| Class design | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
-| System diagram | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
-| Model / view boundary | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
-| Data & state | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
-| Method signatures | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Where validation lives | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Test plan | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
-| Division of work | Raghul, Marcos Salas | Drafted with GenAI (Claude); [how Raghul and Marcos checked or revised it] |
-| Revised scope | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Work Attribution and GenAI note | [name] | [how] |
+| Class design | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos checked it visually and against our scope document; Riya and Raghul checked it manually |
+| System diagram | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos checked it visually and against our scope document; Riya and Raghul checked it manually |
+| Model / view boundary | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Data & state | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Method signatures | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Where validation lives | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Test plan | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Division of work | Raghul, Marcos Salas, Riya Shah | Drafted by Raghul and Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Revised scope | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Work Attribution and GenAI note | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
 
 ## GenAI note
 
-We gave Claude our scope document and the Deliverable 2 rubric and asked it for a minimal first draft of this spec. Claude wrote the first draft of every section, including the system diagram. The design choices that came from Claude are the six rows in Revised scope, plus three more: putting every value check in `OrderBook.submit`, having the controller tell the view when to redraw, and splitting the classes into three packages. [Add what we asked Claude about the model/view boundary and what we changed after reviewing the draft.]
+We gave Claude our scope document and the Deliverable 2 rubric and asked it for a minimal preliminary draft of this spec. Claude made that preliminary draft, helped format the document, and wrote the Mermaid code for the system diagram. It made suggestions on judgement calls; the ones we kept are the 10,000 max in Revised scope, putting every value check in `OrderBook.submit`, having the controller tell the view when to redraw, and splitting the classes into three packages. It also fact-checked the document, for example pointing out that our first rewrite of the model/view boundary said the view could read `OrderBook` fields, which the diagram contradicts. After the draft, Marcos rewrote the model/view boundary paragraphs, rejected Claude's ASCII system diagram and had it redone as a UML diagram, cut various redundant and unnecessary sentences, and corrected misleading wording in the `OrderController` constructor's description. All three of us then checked every section by hand.
