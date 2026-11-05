@@ -197,17 +197,16 @@ A rejected input never changes the book. For every row below the user sees a mes
 
 | Piece | Owner | Builds |
 |---|---|---|
-| Model: the queue | [name] | `LinkedQueue`, `LinkedQueueTest` |
-| Model: the book | [name] | `Side`, `Order`, `Trade`, `OrderBook`, `OrderBookTest` |
+| Model | [name] | `LinkedQueue`, `Side`, `Order`, `Trade`, `OrderBook`, `LinkedQueueTest`, `OrderBookTest` |
 | View | [name] | `ConsoleView` |
 | Controller | [name] | `OrderController` |
 
 How we integrate:
 
-1. The signatures in this spec are the contract. Changing one needs all four of us to agree first.
+1. The signatures in this spec are the contract. Changing one needs all three of us to agree first.
 2. We share one GitHub repo. Each owner works on their own branch and merges into `main` once their code compiles and their tests pass.
-3. The view and controller owners can start right away: `ConsoleView` needs only `Order` and `Trade`, which the book owner pushes first as fields and getters.
-4. First join: the controller owner, [name], merges all four pieces on [date], as soon as `LinkedQueueTest` and the first `OrderBookTest` case pass. They run `main` and type in the three `submit` normal cases from the test plan by hand, checking the printed book against the expected results.
+3. The view and controller owners can start right away: `ConsoleView` needs only `Order` and `Trade`, which the model owner pushes first as fields and getters.
+4. First join: the controller owner, [name], merges all three pieces on [date], as soon as `LinkedQueueTest` and the first `OrderBookTest` case pass. They run `main` and type in the three `submit` normal cases from the test plan by hand, checking the printed book against the expected results.
 
 ## Revised scope
 
