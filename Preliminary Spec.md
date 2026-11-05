@@ -208,16 +208,16 @@ How we integrate:
 3. The view and controller owners can start right away: `ConsoleView` needs only `Order` and `Trade`, which the model owner pushes first as fields and getters.
 4. First join: the controller owner, [name], merges all three pieces on [date], as soon as `LinkedQueueTest` and the first `OrderBookTest` case pass. They run `main` and type in the three `submit` normal cases from the test plan by hand, checking the printed book against the expected results.
 
-## Revised scope
+## Revised Scope
 
-| What changed since the scope doc | Why | Came from | Cost or saving in the build |
-|---|---|---|---|
-| Prices are whole dollars, stored as an `int`. The scope did not say. | An `int` works as a TreeMap key with no rounding, and "10.5" is rejected by the same check as "ten". | GenAI (Claude) | Saves a decimal-format check and rounding code. Costs the user the ability to enter cents. |
-| Self-trades are blocked by rejecting the new order when the trader has a waiting order on the other side at a matching price. The scope said "blocked" and no more. | Rejecting before matching starts keeps our rule that a rejected input never changes the book. | GenAI (Claude) | Costs one loop over the matching prices in `submit`. |
-| `LinkedQueue` gets a fifth method, `toList()`. | The view has to show every waiting order, and dequeueing them to read them would empty the book. The self-trade check reads the queue the same way. | GenAI (Claude) | Costs one short method and one test pair. |
-| The max is 10,000 for both quantity and price. The scope said "a set max". | 10,000 times 10,000 still fits in an `int`, so the volume stretch goal cannot overflow. | GenAI (Claude) | Costs two constants. |
-| A trade happens at the waiting order's price. The scope did not say. | The waiting order committed to its price first, the same reasoning as our FIFO rule. | GenAI (Claude) | Costs nothing: one line in `submit`. |
-| MVP orders have no ID. Cancellation stays a stretch goal, and so does our open question about removing an order from the middle of a queue. | Nothing in the MVP looks an order up by ID. | GenAI (Claude) | Saves an ID counter and a remove method on `LinkedQueue`. |
+| What changed since the scope doc                                                                                               | Why                                                                                                                                                                 | Came from      | Cost or saving in the build                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------- |
+| Prices are whole dollars, stored as an `int`. The scope did not specify this.                                                  | Using an `int` makes prices easy to store as `TreeMap` keys without rounding. Invalid inputs like "10.5" and "ten" can be rejected using the same validation check. | GenAI (Claude) | Saves decimal-format validation and rounding code, but users cannot enter cents.    |
+| Self-trades are blocked by rejecting a new order if it could match a waiting order from the same trader at a compatible price. | Checking before matching begins ensures that a rejected order never changes the order book.                                                                         | GenAI (Claude) | Adds a scan of eligible opposite-side orders before matching starts.                |
+| `LinkedQueue` gets a fifth method, `toList()`, which returns a snapshot of the waiting orders without changing the queue.      | The view needs to display waiting orders, and the self-trade check needs to inspect them without removing anything from the queue.                                  | GenAI (Claude) | Adds one method and its tests, but avoids modifying the queue when reading orders.  |
+| The maximum price and quantity are both 10,000. The scope only mentioned a set maximum.                                        | These limits keep individual price × quantity calculations within the Java `int` range. Cumulative totals may still require a `long`.                               | GenAI (Claude) | Adds two constants and prevents overflow in individual trade-value calculations.    |
+| Trades execute at the waiting order's price. The scope did not specify which price to use.                                     | The waiting order was placed first, so using its price is consistent with the FIFO matching rule.                                                                   | GenAI (Claude) | Requires no additional data structures or significant extra code.                   |
+| MVP orders do not have IDs. Cancellation and removing an order from the middle of a queue remain stretch goals.                | The MVP does not need to look up individual orders by ID because cancellation is not included.                                                                      | GenAI (Claude) | Saves an ID counter and a removal method in `LinkedQueue`, keeping the MVP simpler. |
 
 ## Work Attribution
 
@@ -230,8 +230,8 @@ How we integrate:
 | Method signatures | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
 | Where validation lives | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
 | Test plan | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Division of work | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Revised scope | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
+| Division of work | Raghul Jayaprakash | Drafted with GenAI (Claude); [who checked or revised it, and how] |
+| Revised scope | Raghul Jayaprakash | Drafted with GenAI (Claude); [who checked or revised it, and how] |
 
 ## GenAI note
 
