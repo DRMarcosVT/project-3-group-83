@@ -234,7 +234,7 @@ A rejected input never changes the book. For every row below the user sees a mes
 |---|---|---|
 | Model | Marcos Salas | `LinkedQueue`, `Side`, `Order`, `Trade`, `OrderBook`, `LinkedQueueTest`, `OrderBookTest` |
 | View | Riya Shah | `ConsoleView` |
-| Controller | Raghul | `OrderController` |
+| Controller | Raghul Jayaprakash | `OrderController` |
 
 How we integrate:
 
@@ -243,30 +243,30 @@ How we integrate:
 3. The view and controller owners can start right away: `ConsoleView` needs only `Order` and `Trade`, which the model owner pushes first as fields and getters.
 4. First join: the controller owner, Raghul, merges all three pieces on Monday, November 9 (prospective date), as soon as `LinkedQueueTest` and the first `OrderBookTest` case pass. They run `main` and type in the three `submit` normal cases from the test plan by hand, checking the printed book against the expected results.
 
-## Revised scope
+## Revised Scope
 
 | What changed since the scope doc | Why | Came from | Cost or saving in the build |
 |---|---|---|---|
-| Prices are whole dollars, stored as an `int`. The scope did not say. | An `int` works as a TreeMap key with no rounding, and "10.5" is rejected by the same check as "ten". | Group discussion | Saves a decimal-format check and rounding code. Costs the user the ability to enter cents. |
-| Self-trades are blocked by rejecting the new order when the trader has a waiting order on the other side at a matching price. The scope said "blocked" and no more. | Rejecting before matching starts keeps our rule that a rejected input never changes the book. | Marcos's own reflection | Costs one loop over the matching prices in `submit`. |
-| `LinkedQueue` gets a fifth method, `toList()`. | The view has to print every waiting order in the terminal, and dequeueing them to read them would empty the book. The self-trade check reads the queue the same way. | Group discussion | Costs one short method and one test pair. |
-| The max is 10,000 for both quantity and price. The scope said "a set max". | 10,000 times 10,000 still fits in an `int`, so the volume stretch goal cannot overflow. | GenAI (Claude) | Costs two constants. |
-| A trade happens at the waiting order's price. The scope did not say. | The waiting order committed to its price first, the same reasoning as our FIFO rule. | Marcos's own reflection | Costs nothing: one line in `submit`. |
+| Prices are whole dollars, stored as an `int`. The scope did not specify this. | Using an `int` makes prices easy to store as `TreeMap` keys without rounding. Invalid inputs like "10.5" and "ten" can be rejected using the same validation check. | Group discussion | Saves decimal-format validation and rounding code, but users cannot enter cents. |
+| Self-trades are blocked by rejecting a new order if it could match a waiting order from the same trader at a compatible price. | Checking before matching begins ensures that a rejected order never changes the order book. | Marcos's own reflection | Adds a scan of eligible opposite-side orders before matching starts. |
+| `LinkedQueue` gets a fifth method, `toList()`, which returns a snapshot of the waiting orders without changing the queue. | The view needs to print waiting orders in the terminal, and the self-trade check needs to inspect them without removing anything from the queue. | Group discussion | Adds one method and its tests, but avoids modifying the queue when reading orders. |
+| The maximum price and quantity are both 10,000. The scope only mentioned a set maximum. | These limits keep individual price × quantity calculations within the Java `int` range. Cumulative totals may still require a `long`. | GenAI (Claude) | Adds two constants and prevents overflow in individual trade-value calculations. |
+| Trades execute at the waiting order's price. The scope did not specify which price to use. | The waiting order was placed first, so using its price is consistent with the FIFO matching rule. | Marcos's own reflection | Requires no additional data structures or significant extra code. |
 
 ## Work Attribution
 
 | Section | Team member(s) | Contribution (how) |
 |---|---|---|
-| Class design | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos checked it visually and against our scope document; Riya and Raghul checked it manually |
-| System diagram | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos checked it visually and against our scope document; Riya and Raghul checked it manually |
-| Model / view boundary | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Data & state | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Method signatures | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Where validation lives | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Test plan | Marcos Salas, Riya Shah, Raghul | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Division of work | Raghul, Marcos Salas, Riya Shah | Drafted by Raghul and Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Revised scope | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
-| Work Attribution and GenAI note | Marcos Salas, Riya Shah, Raghul | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Class design | Marcos Salas, Riya Shah, Raghul Jayaprakash | Drafted by Marcos, GenAI-assisted (Claude); Marcos checked it visually and against our scope document; Riya and Raghul checked it manually |
+| System diagram | Marcos Salas, Riya Shah, Raghul Jayaprakash | Drafted by Marcos, GenAI-assisted (Claude); Marcos checked it visually and against our scope document; Riya and Raghul checked it manually |
+| Model / view boundary | Marcos Salas, Riya Shah, Raghul Jayaprakash | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Data & state | Marcos Salas, Riya Shah, Raghul Jayaprakash | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Method signatures | Marcos Salas, Riya Shah, Raghul Jayaprakash | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Where validation lives | Marcos Salas, Riya Shah, Raghul Jayaprakash | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Test plan | Marcos Salas, Riya Shah, Raghul Jayaprakash | Drafted by Marcos, GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
+| Division of work | Raghul Jayaprakash, Marcos Salas, Riya Shah | Drafted by Raghul and Marcos, GenAI-assisted (Claude); Raghul reviewed the task assignments and integration plan; Marcos, Riya and Raghul checked it manually |
+| Revised scope | Raghul Jayaprakash, Marcos Salas, Riya Shah | GenAI-assisted (Claude); Raghul reviewed and revised it for accuracy and consistency; Marcos, Riya and Raghul checked it manually |
+| Work Attribution and GenAI note | Marcos Salas, Riya Shah, Raghul Jayaprakash | GenAI-assisted (Claude); Marcos, Riya and Raghul checked it manually |
 
 ## GenAI note
 
