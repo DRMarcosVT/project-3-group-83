@@ -4,8 +4,6 @@ Project Name: No Cutting!
 
 ## Class design, split by role
 
-Seven classes in three packages named after the roles: `model`, `view`, `controller`. Each class sits in the package of its role, so no class spans two.
-
 | Class | Role | Responsibility |
 |---|---|---|
 | `LinkedQueue<T>` | Model | Holds items in arrival order; first in, first out. |
@@ -20,54 +18,93 @@ Seven classes in three packages named after the roles: `model`, `view`, `control
 
 ## System diagram
 
-Arrows are labelled with what moves. The view never calls `OrderBook` and the model never calls the view; everything passes through `OrderController`.
+A UML class diagram with one box per package. Arrows run from the class that holds the reference to the class it uses, and each label says what moves along it. The only arrows that cross a package line start at `OrderController`, plus the dashed ones where `ConsoleView` reads `Order`, `Trade` and `Side`. Nothing points out of `model`.
 
+```mermaid
+classDiagram
+    direction TB
+    namespace view {
+        class ConsoleView {
+            -Scanner in
+            +ask(String prompt) String
+            +showBook(ArrayList~Order~ bids, ArrayList~Order~ asks) void
+            +showTrades(ArrayList~Trade~ trades) void
+            +showError(String message) void
+        }
+    }
+    namespace controller {
+        class OrderController {
+            -OrderBook book
+            -ConsoleView view
+            +run() void
+            +main(String[] args) void$
+        }
+    }
+    namespace model {
+        class OrderBook {
+            -TreeMap bids
+            -TreeMap asks
+            -ArrayList~Trade~ trades
+            +int MAX_QUANTITY$
+            +int MAX_PRICE$
+            +submit(String trader, Side side, int quantity, int price) void
+            +getBids() ArrayList~Order~
+            +getAsks() ArrayList~Order~
+            +getTrades() ArrayList~Trade~
+        }
+        class LinkedQueue~T~ {
+            -Node~T~ head
+            -Node~T~ tail
+            +enqueue(T item) void
+            +dequeue() T
+            +peek() T
+            +isEmpty() boolean
+            +toList() ArrayList~T~
+        }
+        class Node~T~ {
+            -T data
+            -Node~T~ next
+        }
+        class Order {
+            -String trader
+            -Side side
+            -int price
+            -int remaining
+            +getTrader() String
+            +getSide() Side
+            +getPrice() int
+            +getRemaining() int
+            ~fill(int shares) void
+        }
+        class Trade {
+            -String buyer
+            -String seller
+            -int price
+            -int quantity
+            +getBuyer() String
+            +getSeller() String
+            +getPrice() int
+            +getQuantity() int
+        }
+        class Side {
+            <<enumeration>>
+            BUY
+            SELL
+        }
+    }
+    OrderController --> ConsoleView : sends lists and error text, gets typed lines back from ask
+    OrderController --> OrderBook : sends one order to submit, gets lists back or an IllegalArgumentException
+    ConsoleView ..> Order : reads getters
+    ConsoleView ..> Trade : reads getters
+    ConsoleView ..> Side : prints BUY or SELL
+    OrderBook "1" *-- "0..*" LinkedQueue : one queue per price in bids and asks
+    OrderBook "1" *-- "0..*" Trade : one per fill
+    LinkedQueue "1" *-- "0..*" Node : head to tail
+    Node --> Order : data, oldest at head
+    Order --> Side
 ```
- VIEW (package view)
- +--------------------------------------------------------------------+
- | ConsoleView                                                        |
- |   ask   showBook   showTrades   showError                          |
- |   reads Order and Trade through their getters only                 |
- +--------------------------------------------------------------------+
-      |                             ^
-      | typed line (String)         | ArrayList<Order> bids, asks
-      |                             | ArrayList<Trade> trades
-      v                             | error message (String)
- ===================== view / controller boundary =====================
- CONTROLLER (package controller)
- +--------------------------------------------------------------------+
- | OrderController                                                    |
- |   main   run                                                       |
- +--------------------------------------------------------------------+
-      |                             ^
-      | submit(trader, side,        | ArrayList<Order> (getBids, getAsks)
-      |        quantity, price)     | ArrayList<Trade> (getTrades)
-      v                             | IllegalArgumentException (rejected)
- ==================== controller / model boundary =====================
- MODEL (package model)
- +--------------------------------------------------------------------+
- | OrderBook                                                          |
- |   submit   getBids   getAsks   getTrades                           |
- |   bids, asks : TreeMap<Integer, LinkedQueue<Order>>                |
- |   trades     : ArrayList<Trade>                                    |
- |      |                                          |                  |
- |      | one queue per price                      | one per fill     |
- |      v                                          v                  |
- | +----------------------------------+      +---------------------+  |
- | | LinkedQueue<Order>               |      | Trade               |  |
- | |   enqueue  dequeue  peek         |      |   buyer, seller,    |  |
- | |   isEmpty  toList                |      |   price, quantity   |  |
- | +----------------------------------+      +---------------------+  |
- |      |                                                             |
- |      | holds, oldest at the head                                   |
- |      v                                                             |
- | +----------------------------------+                               |
- | | Order                            |                               |
- | |   trader, side (Side: BUY, SELL),|                               |
- | |   price, remaining               |                               |
- | +----------------------------------+                               |
- +--------------------------------------------------------------------+
-```
+
+`bids` and `asks` are `TreeMap<Integer, LinkedQueue<Order>>`; the diagram shortens them to `TreeMap`. Filled diamonds mean the owner creates and holds the parts. `~` marks package-private, `$` marks static.
 
 ## The model / view boundary
 
@@ -223,15 +260,16 @@ How we integrate:
 
 | Section | Team member(s) | Contribution (how) |
 |---|---|---|
-| Class design | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| System diagram | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Model / view boundary | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Data & state | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
+| Class design | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
+| System diagram | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
+| Model / view boundary | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
+| Data & state | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
 | Method signatures | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
 | Where validation lives | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Test plan | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
-| Division of work | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
+| Test plan | Marcos Salas | Drafted with GenAI (Claude); [how Marcos checked or revised it] |
+| Division of work | Raghul, Marcos Salas | Drafted with GenAI (Claude); [how Raghul and Marcos checked or revised it] |
 | Revised scope | [name] | Drafted with GenAI (Claude); [who checked or revised it, and how] |
+| Work Attribution and GenAI note | [name] | [how] |
 
 ## GenAI note
 
