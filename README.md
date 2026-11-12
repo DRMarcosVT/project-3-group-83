@@ -58,6 +58,7 @@ In PowerShell, `<` is not available; use `Get-Content demo\mvp-session.txt | jav
 | `src/driver` | Driver | `ModelDriver` |
 | `demo` | | The three scripted sessions |
 | `Preliminary Spec.md` | | The spec, revised to match this build and to plan Deliverable 4 |
+
 ## Reflection
 
 "The spec" below means the Deliverable 2 text, which is in git at commit `e55516d`.
@@ -69,8 +70,8 @@ In PowerShell, `<` is not available; use `Get-Content demo\mvp-session.txt | jav
 | A trader is a name: `submit(String trader, ...)`, `String getTrader()`, `String getBuyer()`, `String getSeller()`. | A trader is a positive `int` ID in all four places. | Cancellation has to check that the trader asking owns the order. Two `int`s compare with `==`; two names can differ by case or spacing and still mean the same person. | Planning the Deliverable 4 change feature. Marcos proposed the switch before any code existed, so it cost spec edits and no rework. |
 | Orders had no ID. `submit` returned `void`. | `OrderBook` numbers each accepted order from one counter, `nextOrderId`. `Order` has `getId()`. `submit` returns the ID. | A user needs a way to name the order to cancel. | Planning the change feature, as in the row above. The spec's stretch row already mentioned `cancel(int orderId)` but gave orders no ID to match it. |
 | `submit` rejected a blank trader name. | `submit` rejects a trader ID below 1. `run` also rejects it when it is typed. | A number cannot be blank. Text typed as an ID is caught in the controller by `Integer.parseInt`, where the spec already caught text typed as a quantity or price. | Follows from the first row. |
-| `run` asked for trader, side, quantity and price for every order, and ended on `quit` at the trader prompt. | `run` asks for a trader ID once and keeps it in a new field, `currentTrader`. It then reads commands: `buy`, `sell`, `switch <id>`, `quit`. | Self-trades are blocked, so one person typing both sides needs to change trader. A command prompt also gives Deliverable 4 a place to add `cancel` and `mine`. | GenAI (Claude) pointed out that with one fixed ID a person testing by hand could never get a fill. Marcos accepted `switch`. |
-| `ask` returns the line the user types. | `ask` returns `null` when the input has ended, and `run` treats `null` as `quit`. | Without it the program crashed. | Running the first build with input piped from a file that did not end in `quit` threw `NoSuchElementException` from `Scanner.nextLine`, at `ConsoleView.ask`. |
+| `run` asked for trader, side, quantity and price for every order, and ended on `quit` at the trader prompt. | `run` asks for a trader ID once and keeps it in a new field, `currentTrader`. It then reads commands: `buy`, `sell`, `cancel <id>`, `mine`, `switch <id>`, `quit`. | Knowing who is typing lets `submit` block self-trades and lets `cancel` refuse to cancel another trader's order. | Marcos debating with Claude how cancellation should work: who is sending the cancel, and whose order it cancels. That is why the program asks for a trader ID before any trading. |
+| `ask` returns the line the user types. | `ask` returns `null` when the input has ended, and `run` treats `null` as `quit`. | Without it the program crashed. | Running the prototype with input piped from a file that did not end in `quit` threw `NoSuchElementException` from `Scanner.nextLine`, at `ConsoleView.ask`. |
 | Seven classes in three packages. | An eighth class, `driver.ModelDriver`, in a fourth package. | The model has to be runnable from a driver with no view. Keeping the driver outside `model` keeps every print statement out of the model package. | The Deliverable 3 rubric. |
 | The test plan named traders alice, bob, carol and dave. | The same cases with trader IDs 1, 2, 3 and 4, each also checking the order ID. | Follows from the first two rows. | Follows from the first two rows. |
 | The test plan had one normal and one bad-input case per method. | Seven more cases: enqueue after the queue was emptied, changing the list `toList` returned, a small order partly filling a waiting one, the same trader waiting on both sides at prices that cannot trade, a waiting order priced past the new order's limit, the maximum quantity and price, and order numbering with a rejected order in between. | The planned cases did not reach these branches: `dequeue` resetting `tail`, the self-trade scan stopping at the first price that does not match, the fill loop stopping at the limit price, and the upper edge of each range check. | Writing those branches and seeing that no planned test would fail if they were wrong. |
@@ -96,7 +97,7 @@ One thing in the model is written for the screen. The messages inside `submit`'s
 | Unknown from the scope | Status |
 |---|---|
 | How do we cancel an order in the middle of a singly linked queue without changing the others? | Figured out and built. `LinkedQueue.remove(T item)` walks from `head` keeping a reference to the previous node, links the previous node to the one after the match, and moves `head` or `tail` when the match is first or last. Its six tests pass, including removing the tail and then enqueueing, which fails if `tail` is left on the removed node. |
-| Should we use a Swing or JavaFX UI? | Still open, and no longer blocking: the prototype uses the console, and we have dropped the GUI stretch goal. See Stretch goals. |
+| Should we use a Swing or JavaFX UI? | Settled: we dropped the GUI stretch goal, so we no longer need to choose. The prototype uses the console. See Stretch goals. |
 | How do we plan a git workflow for all three team members? | Figured out. The spec plans it: one branch per piece (`model`, `view`, `controller`), merged into `main` by its owner. We worked on separate branches and merged them all into `main`: the spec on `preliminary-spec`, with Raghul's edits merged in at commit `f147ad4`, and this prototype on `prototype-1`. |
 
 ### What doesn't work yet
@@ -137,8 +138,7 @@ It qualifies as a change feature on both counts in the rubric. It changes model 
 | `Order`, `Trade`, `Side` | `Order` already has `getId()` and `getTrader()`. A cancel makes no trade. |
 | `ModelDriver`, and every existing test | No existing signature changes. |
 
-The feature touches classes in all three roles, and each edit stays inside its own role: the model decides whether a cancel is allowed and removes the order, the controller reads the command, and the view prints one line of text it is handed. The view does not learn how the book stores orders, and the model does not print. If building it forces a change to any row of the second table, we will say which one and why in Deliverable 4.
-
+The feature touches classes in all three roles, and each edit stays inside its own role: the model decides whether a cancel is allowed and removes the order, the controller reads the command, and the view prints one line of text it is handed. The view does not learn how the book stores orders, and the model does not print.
 The full plan, with the steps of `cancel`, its validation and its tests, is in the spec under "Deliverable 4 change feature: order cancellation".
 
 ### Built early: prediction against the result
@@ -168,13 +168,7 @@ One idea is not in the scope: randomly generated orders, so a single user has a 
 
 ### New tests we will need
 
-Written and passing:
-
-- For `LinkedQueue.remove`, in `LinkedQueueTest`: removing from the middle, the head and the tail; enqueueing after the tail was removed; removing the only item; an item that is not in the queue; and `null`.
-- For `OrderBook.cancel`, in `OrderBookTest`: cancelling a waiting order; cancelling the only order at a price and then sending an order that would have matched it; cancelling a partly filled order; cancelling the older of two orders at one price and checking the newer one fills first. Bad input: another trader's order, an ID of 0, an ID that was never issued, an order that already filled, and the same order twice.
-- For `getBids(int)` and `getAsks(int)`: a book with two traders' orders, and a trader with none.
-
-The expected result of each case is in the spec.
+The quantity check in step 1 of "What is left to finish the MVP" must reject 0, -5 and 10,001 before the price prompt; we will add these to `demo/bad-input-session.txt`.
 
 ### Who does what
 
@@ -183,7 +177,6 @@ The expected result of each case is in the spec.
 | Quantity check before the price prompt | Raghul Jayaprakash |
 | The trade log decision | Riya Shah |
 | Review `LinkedQueue.remove`, `OrderBook.cancel`, `getBids(int)`, `getAsks(int)`, and their tests | Marcos Salas |
-| Comparing the build with the prediction above | Marcos Salas, Riya Shah, Raghul Jayaprakash |
 
 ## Attribution
 
