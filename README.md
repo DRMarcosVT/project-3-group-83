@@ -107,11 +107,10 @@ One thing in the model is written for the screen. The messages inside `submit`'s
 
 ### What is left to finish the MVP
 
-All five MVP steps in the scope run today. What remains is agreeing to the signature changes and two fixes, in this order:
+All five MVP steps in the scope run today. What remains is two fixes, in this order:
 
-1. Riya and Raghul, who have reviewed every class and test file, agree to the signature changes in "Revised after Deliverable 2" in the spec. Our own integration rule requires all three of us to agree to a signature change.
-2. Report an out-of-range quantity before asking for the price: `run` compares the quantity with `OrderBook.MAX_QUANTITY` before the price prompt. `submit` keeps its own check.
-3. Decide whether `showTrades` should print only the newest trades.
+1. Report an out-of-range quantity before asking for the price: `run` compares the quantity with `OrderBook.MAX_QUANTITY` before the price prompt. `submit` keeps its own check.
+2. Decide whether `showTrades` should print only the newest trades.
 
 ### Our change feature: order cancellation
 
@@ -181,8 +180,6 @@ The expected result of each case is in the spec.
 
 | Item | Owner |
 |---|---|
-| Agree to the signature changes | Riya Shah |
-| Agree to the signature changes | Raghul Jayaprakash |
 | Quantity check before the price prompt | Raghul Jayaprakash |
 | The trade log decision | Riya Shah |
 | Review `LinkedQueue.remove`, `OrderBook.cancel`, `getBids(int)`, `getAsks(int)`, and their tests | Marcos Salas |
