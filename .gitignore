@@ -1,0 +1,6 @@
+# Compiled output
+bin/
+*.class
+
+# Eclipse per-machine settings
+.settings/
