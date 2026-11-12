@@ -1,0 +1,51 @@
+ten
+0
+-4
+
+1
+sell
+100
+25
+buy
+0
+25
+buy
+-5
+25
+buy
+10
+0
+buy
+10
+-5
+buy
+ten
+buy
+10
+10.5
+buy
+10001
+25
+buy
+10
+10001
+buy
+99999999999
+hold
+
+BUY SELL
+buy
+10
+25
+switch
+switch two
+switch 0
+switch -1
+switch 2 3
+switch 2
+buy
+50
+25
+sell
+10
+24

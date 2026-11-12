@@ -1,0 +1,28 @@
+1
+sell
+100
+25
+sell
+50
+26
+switch 2
+buy
+40
+25
+cancel 1
+mine
+switch 1
+mine
+cancel 1
+cancel 3
+cancel 99
+cancel 0
+cancel two
+cancel
+cancel 1 2
+switch 2
+buy
+10
+26
+mine
+quit

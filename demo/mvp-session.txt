@@ -1,0 +1,13 @@
+1
+sell
+100
+25
+switch 2
+buy
+150
+30
+switch 3
+sell
+20
+28
+quit
