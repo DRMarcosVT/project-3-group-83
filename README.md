@@ -2,9 +2,7 @@
 
 An order book simulator for one stock. Traders send orders to buy or sell shares at a price. An order fills against the best price on the other side, oldest order first within a price, and any unfilled remainder waits in line.
 
-This is the Deliverable 3 prototype: the model, its JUnit tests, a driver that runs the model alone, and a thin console view that goes through a controller. Order cancellation, our Deliverable 4 change feature, was also built on November 11, after its prediction was written; "Built early: prediction against the result" under Next Steps compares the two.
-
-> Draft of November 11, 2026. It describes what is in this folder and was run on that date.
+This is the Deliverable 3 prototype: the model, its JUnit tests, a driver that runs the model alone, and a thin console view that goes through a controller. Order cancellation, our Deliverable 4 change feature, was also built, after its prediction was written; "Built early: prediction against the result" under Next Steps compares the two.
 
 ## How to run
 
@@ -59,9 +57,7 @@ In PowerShell, `<` is not available; use `Get-Content demo\mvp-session.txt | jav
 | `src/controller` | Controller | `OrderController`, which holds `main` |
 | `src/driver` | Driver | `ModelDriver` |
 | `demo` | | The three scripted sessions |
-| `Preliminary Spec.md` | | The spec, revised on November 11 to match this build and to plan Deliverable 4 |
-| `Cancellation Proposal.md` | | The options we weighed for the change feature |
-
+| `Preliminary Spec.md` | | The spec, revised to match this build and to plan Deliverable 4 |
 ## Reflection
 
 "The spec" below means the Deliverable 2 text, which is in git at commit `e55516d`.
@@ -70,8 +66,8 @@ In PowerShell, `<` is not available; use `Get-Content demo\mvp-session.txt | jav
 
 | The spec said | We built | Why | What prompted it |
 |---|---|---|---|
-| A trader is a name: `submit(String trader, ...)`, `String getTrader()`, `String getBuyer()`, `String getSeller()`. | A trader is a positive `int` ID in all four places. | Cancellation has to check that the trader asking owns the order. Two `int`s compare with `==`; two names can differ by case or spacing and still mean the same person. | Planning the Deliverable 4 change feature on November 11. Marcos proposed the switch before any code existed, so it cost spec edits and no rework. |
-| Orders had no ID. `submit` returned `void`. | `OrderBook` numbers each accepted order from one counter, `nextOrderId`. `Order` has `getId()`. `submit` returns the ID. | A user needs a way to name the order to cancel. | The same planning session. The spec's stretch row already mentioned `cancel(int orderId)` but gave orders no ID to match it. |
+| A trader is a name: `submit(String trader, ...)`, `String getTrader()`, `String getBuyer()`, `String getSeller()`. | A trader is a positive `int` ID in all four places. | Cancellation has to check that the trader asking owns the order. Two `int`s compare with `==`; two names can differ by case or spacing and still mean the same person. | Planning the Deliverable 4 change feature. Marcos proposed the switch before any code existed, so it cost spec edits and no rework. |
+| Orders had no ID. `submit` returned `void`. | `OrderBook` numbers each accepted order from one counter, `nextOrderId`. `Order` has `getId()`. `submit` returns the ID. | A user needs a way to name the order to cancel. | Planning the change feature, as in the row above. The spec's stretch row already mentioned `cancel(int orderId)` but gave orders no ID to match it. |
 | `submit` rejected a blank trader name. | `submit` rejects a trader ID below 1. `run` also rejects it when it is typed. | A number cannot be blank. Text typed as an ID is caught in the controller by `Integer.parseInt`, where the spec already caught text typed as a quantity or price. | Follows from the first row. |
 | `run` asked for trader, side, quantity and price for every order, and ended on `quit` at the trader prompt. | `run` asks for a trader ID once and keeps it in a new field, `currentTrader`. It then reads commands: `buy`, `sell`, `switch <id>`, `quit`. | Self-trades are blocked, so one person typing both sides needs to change trader. A command prompt also gives Deliverable 4 a place to add `cancel` and `mine`. | GenAI (Claude) pointed out that with one fixed ID a person testing by hand could never get a fill. Marcos accepted `switch`. |
 | `ask` returns the line the user types. | `ask` returns `null` when the input has ended, and `run` treats `null` as `quit`. | Without it the program crashed. | Running the first build with input piped from a file that did not end in `quit` threw `NoSuchElementException` from `Scanner.nextLine`, at `ConsoleView.ask`. |
@@ -100,28 +96,22 @@ One thing in the model is written for the screen. The messages inside `submit`'s
 | Unknown from the scope | Status |
 |---|---|
 | How do we cancel an order in the middle of a singly linked queue without changing the others? | Figured out and built. `LinkedQueue.remove(T item)` walks from `head` keeping a reference to the previous node, links the previous node to the one after the match, and moves `head` or `tail` when the match is first or last. Its six tests pass, including removing the tail and then enqueueing, which fails if `tail` is left on the removed node. |
-| Should we use a Swing or JavaFX UI? | Still open, and no longer blocking: the prototype uses the console. We are keeping a GUI as a proposed next step after cancellation, and will choose the toolkit then. See Stretch goals. |
-| How do we plan a git workflow for all three team members? | Planned in the spec: one branch per piece (`model`, `view`, `controller`), merged into `main` by its owner. Still unproven: on November 11 the repository had only `main` and `preliminary-spec`, and this prototype had not yet been through those branches. |
+| Should we use a Swing or JavaFX UI? | Still open, and no longer blocking: the prototype uses the console, and we have dropped the GUI stretch goal. See Stretch goals. |
+| How do we plan a git workflow for all three team members? | Figured out. The spec plans it: one branch per piece (`model`, `view`, `controller`), merged into `main` by its owner. We worked on separate branches and merged them all into `main`: the spec on `preliminary-spec`, with Raghul's edits merged in at commit `f147ad4`, and this prototype on `prototype-1`. |
 
 ### What doesn't work yet
 
-- No JUnit test runs `OrderController` or `ConsoleView`. They have been checked only by the three scripted sessions in `demo/`, read by eye.
-- A quantity that is a number but out of range (0, -5, 10,001) is reported only after the user has also typed a price, because the range check is in `submit`. Text such as "ten" is reported at once.
 - The whole trade log is printed after every order and every cancel, so a long session scrolls.
-- Every bad-input case in the scope is handled, including the two about cancelling.
-- No test is failing: 44 of 44 pass.
 
 ## Next Steps
 
 ### What is left to finish the MVP
 
-All five MVP steps in the scope run today. What remains is review and three fixes, in this order:
+All five MVP steps in the scope run today. What remains is agreeing to the signature changes and two fixes, in this order:
 
-1. Riya reviews `ConsoleView` and Raghul reviews `OrderController`, and both agree to the signature changes in "Revised after Deliverable 2" in the spec. Our own integration rule requires all three of us to agree to a signature change.
-2. Each owner commits their piece on their branch and merges it into `main`, as the spec's integration plan says.
-3. Add `OrderControllerTest`, which feeds typed lines through `System.setIn` and checks the book afterwards, so the controller is no longer checked only by eye.
-4. Report an out-of-range quantity before asking for the price: `run` compares the quantity with `OrderBook.MAX_QUANTITY` before the price prompt. `submit` keeps its own check.
-5. Decide whether `showTrades` should print only the newest trades.
+1. Riya and Raghul, who have reviewed every class and test file, agree to the signature changes in "Revised after Deliverable 2" in the spec. Our own integration rule requires all three of us to agree to a signature change.
+2. Report an out-of-range quantity before asking for the price: `run` compares the quantity with `OrderBook.MAX_QUANTITY` before the price prompt. `submit` keeps its own check.
+3. Decide whether `showTrades` should print only the newest trades.
 
 ### Our change feature: order cancellation
 
@@ -154,7 +144,7 @@ The full plan, with the steps of `cancel`, its validation and its tests, is in t
 
 ### Built early: prediction against the result
 
-We built cancellation on November 11, after writing the prediction above and without changing it. Outside the two test classes, which gained new tests and kept their old ones unchanged, every edit is in the four classes listed below.
+We built cancellation after writing the prediction above and without changing it. Outside the two test classes, which gained new tests and kept their old ones unchanged, every edit is in the four classes listed below.
 
 | Predicted | What happened |
 |---|---|
@@ -171,21 +161,19 @@ The tests also go beyond the plan in two places. `cancelClearsSelfTradeBlock` ch
 | Stretch goal from the scope | Decision | Reason |
 |---|---|---|
 | 1. Order cancellation | Committing. It is the change feature. | The spec already places its validation, and it answers our first unknown. |
-| 2. Swing or JavaFX GUI | Proposed as a next step, after cancellation is merged. Not committed. | The model would not change: a GUI replaces `ConsoleView`. Two things would. `OrderController` holds a `ConsoleView` field, so it needs a view interface or a second controller, and its `run` loop blocks on `ask`, which a GUI's button events cannot drive. We have not chosen between Swing and JavaFX. |
-| 3. Stats: volume traded, average wait before a fill | Attempting part of it, after cancellation is merged: `getVolume()` and `getSpread()` on `OrderBook`. Dropping average wait. | Volume and spread are sums and a subtraction over what the book already holds. Average wait needs a timestamp on every `Order`. |
+| 2. Swing or JavaFX GUI | Dropping. | The model would not change: a GUI replaces `ConsoleView`. Two things would. `OrderController` holds a `ConsoleView` field, so it needs a view interface or a second controller, and its `run` loop blocks on `ask`, which a GUI's button events cannot drive. |
+| 3. Stats: volume traded, average wait before a fill | Dropping. | Average wait needs a timestamp on every `Order`. Volume and spread would add methods to `OrderBook` and `ConsoleView`; we are keeping Deliverable 4 to cancellation and the MVP fixes above. |
 | 4. Market-making model | Dropping. | It needs other traders to trade against, which the program does not have. |
 
-One idea is not in the scope: randomly generated orders, so a single user has a market to trade against, with a setting for a busy or a thin market. We will attempt it only if cancellation and the two stats are merged with time to spare.
+One idea is not in the scope: randomly generated orders, so a single user has a market to trade against, with a setting for a busy or a thin market. We are dropping it.
 
 ### New tests we will need
 
-Written and passing on November 11:
+Written and passing:
 
 - For `LinkedQueue.remove`, in `LinkedQueueTest`: removing from the middle, the head and the tail; enqueueing after the tail was removed; removing the only item; an item that is not in the queue; and `null`.
 - For `OrderBook.cancel`, in `OrderBookTest`: cancelling a waiting order; cancelling the only order at a price and then sending an order that would have matched it; cancelling a partly filled order; cancelling the older of two orders at one price and checking the newer one fills first. Bad input: another trader's order, an ID of 0, an ID that was never issued, an order that already filled, and the same order twice.
 - For `getBids(int)` and `getAsks(int)`: a book with two traders' orders, and a trader with none.
-
-Still needed, in a new `OrderControllerTest`: `cancel` with text for an ID, with no ID, and with two; `mine` with no orders waiting. `demo/cancel-session.txt` types all four today, but only a person reading the output checks them.
 
 The expected result of each case is in the spec.
 
@@ -193,37 +181,32 @@ The expected result of each case is in the spec.
 
 | Item | Owner |
 |---|---|
-| Review `ConsoleView`; review and agree to the signature changes | Riya Shah |
-| Review `OrderController`; review and agree to the signature changes | Raghul Jayaprakash |
-| Merge the three pieces into `main` | Raghul Jayaprakash |
-| `OrderControllerTest`; quantity check before the price prompt; review `cancel` and `mine` in `run` | Raghul Jayaprakash |
-| Review `showMessage`; the trade log decision | Riya Shah |
+| Agree to the signature changes | Riya Shah |
+| Agree to the signature changes | Raghul Jayaprakash |
+| Quantity check before the price prompt | Raghul Jayaprakash |
+| The trade log decision | Riya Shah |
 | Review `LinkedQueue.remove`, `OrderBook.cancel`, `getBids(int)`, `getAsks(int)`, and their tests | Marcos Salas |
-| `getVolume()` and `getSpread()`, if attempted | Marcos Salas |
-| Printing the stats, if attempted | Riya Shah |
 | Comparing the build with the prediction above | Marcos Salas, Riya Shah, Raghul Jayaprakash |
 
 ## Attribution
 
 | Class or test file | Who | How |
 |---|---|---|
-| `model/LinkedQueue.java` | Marcos Salas | GenAI-assisted: Claude wrote the first draft from the spec at Marcos's direction. |
-| `model/Side.java` | Marcos Salas | Same. |
-| `model/Order.java` | Marcos Salas | Same. Marcos decided on the `int` trader ID and the order ID. |
-| `model/Trade.java` | Marcos Salas | Same. |
-| `model/OrderBook.java` | Marcos Salas | Same. Marcos decided on the self-trade rule in the spec and the ID counter. |
-| `model/LinkedQueueTest.java` | Marcos Salas | GenAI-assisted: Claude wrote the tests from the spec's test plan and ran them. |
-| `model/OrderBookTest.java` | Marcos Salas | Same. |
-| `driver/ModelDriver.java` | Marcos Salas | GenAI-assisted: Claude wrote and ran it. |
-| `view/ConsoleView.java` | Riya Shah (owner) | First draft by Claude, prompted by Marcos. |
-| `controller/OrderController.java` | Raghul Jayaprakash (owner) | First draft by Claude, prompted by Marcos. |
+| `model/LinkedQueue.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted; Claude wrote the first draft from the spec at Marcos's direction. Riya and Raghul: reviewed it against the spec. |
+| `model/Side.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted, as for `LinkedQueue`. Riya and Raghul: reviewed it against the spec. |
+| `model/Order.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted, as for `LinkedQueue`; Marcos decided on the `int` trader ID and the order ID. Riya and Raghul: reviewed it against the spec. |
+| `model/Trade.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted, as for `LinkedQueue`. Riya and Raghul: reviewed it against the spec. |
+| `model/OrderBook.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted, as for `LinkedQueue`; Marcos decided on the self-trade rule in the spec and the ID counter. Riya and Raghul: reviewed it against the spec. |
+| `model/LinkedQueueTest.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted; Claude wrote the tests from the spec's test plan at Marcos's direction and ran them. Riya and Raghul: reviewed the tests against the spec's test plan. |
+| `model/OrderBookTest.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted, as for `LinkedQueueTest`. Riya and Raghul: reviewed the tests against the spec's test plan. |
+| `driver/ModelDriver.java` | Marcos Salas, Riya Shah, Raghul Jayaprakash | Marcos: GenAI-assisted; Claude wrote and ran it at Marcos's direction. Riya and Raghul: reviewed it. |
+| `view/ConsoleView.java` | Riya Shah (owner), Marcos Salas, Raghul Jayaprakash | Marcos: GenAI-assisted; Claude wrote the first draft, prompted by Marcos. Riya: reviewed it against the spec as its owner. Raghul: reviewed it against the spec. |
+| `controller/OrderController.java` | Raghul Jayaprakash (owner), Marcos Salas, Riya Shah | Marcos: GenAI-assisted; Claude wrote the first draft, prompted by Marcos. Raghul: reviewed it against the spec as its owner. Riya: reviewed it against the spec. |
 
 ### GenAI note
 
-We used Claude, through Claude Code, in one session on November 11, 2026, run by Marcos.
+**Choosing the change feature.** Following the rubric's tip, Marcos debated with Claude which of the stretch goals in our spec would make the best change feature, and which classes each one would force us to edit. For cancellation Claude listed `LinkedQueue`, `OrderBook`, `OrderController` and `ConsoleView`, which crosses our model/view line. Marcos also used Claude to clarify what the model/view boundary means: a feature can have a model part and a view part as long as neither does the other's job. On that reading we kept both the feature and the boundary, since every predicted edit stays inside its own role.
 
-**Choosing the change feature.** Following the rubric's tip, Marcos gave Claude our scope and spec and asked which stretch goals could be the change feature and which classes each would force us to edit. For cancellation Claude listed `LinkedQueue`, `OrderBook`, `OrderController` and `ConsoleView`. That list has classes on both sides of our model/view line, so we looked again, as the tip says to. Marcos argued that a feature can have a model part and a view part without either doing the other's job; Claude agreed after first arguing the opposite. We kept the feature and the boundary: every predicted edit stays inside its own role. Claude at first said `ConsoleView` would not change, then corrected itself once orders had IDs, because the view has to print them and needs a way to print a confirmation.
+**Designing it.** Marcos proposed integer trader IDs, order IDs, a trader ID set before the first command, and a rule that you can cancel only your own order. We kept all four. He also proposed a cancel as its own kind of order held in a queue, and one ID counter per side. On Claude's recommendation we changed both: a cancel is a method call, and there is one counter. Claude suggested the `switch` command, returning the order ID from `submit`, and removing a cancelled order from its queue at once; Marcos accepted them.
 
-**Designing it.** Marcos proposed integer trader IDs, order IDs, a trader ID set before the first command, and a rule that you can cancel only your own order. We kept all four. He also proposed a cancel as its own kind of order held in a queue, and one ID counter per side. On Claude's recommendation we changed both: a cancel is a method call, and there is one counter. Claude suggested the `switch` command, returning the order ID from `submit`, and removing a cancelled order from its queue at once; Marcos accepted them. The reasons are in `Cancellation Proposal.md`.
-
-**Writing the prototype.** Claude wrote the first draft of every class, both test classes and the driver from the revised spec, compiled them, ran the 27 tests, and ran the two scripted sessions. Later the same day, at Marcos's request, Claude built cancellation from the spec's plan, added 17 tests and `demo/cancel-session.txt`, and compared the result with the prediction. Running a session that ended without `quit` exposed the crash described in the Reflection, which Claude fixed. Claude also wrote the first draft of this README and applied the agreed changes to the spec.
+**Writing the prototype.** Claude wrote the preliminary draft of the codebase, including the tests. Later, at Marcos's request, Claude built cancellation from the spec's plan, added 17 tests and `demo/cancel-session.txt`, and compared the result with the prediction. Running a session that ended without `quit` exposed the crash described in the Reflection, which Claude fixed. Claude also applied the agreed changes to the spec. We used Claude on this README for formatting, fact-checking and grammar.
