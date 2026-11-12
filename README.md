@@ -136,14 +136,14 @@ It qualifies as a change feature on both counts in the rubric. It changes model 
 | `LinkedQueue.enqueue`, `dequeue`, `peek`, `isEmpty`, `toList` | `remove` is a new method beside them. |
 | `ConsoleView.ask`, `showBook`, `showTrades`, `showError` | `mine` hands filtered lists to the existing `showBook`. |
 | `Order`, `Trade`, `Side` | `Order` already has `getId()` and `getTrader()`. A cancel makes no trade. |
-| `ModelDriver`, and every existing test | No existing signature changes. |
+| `ModelDriver` | It calls only `submit`, `getBids()`, `getAsks()` and `getTrades()`. |
 
 The feature touches classes in all three roles, and each edit stays inside its own role: the model decides whether a cancel is allowed and removes the order, the controller reads the command, and the view prints one line of text it is handed. The view does not learn how the book stores orders, and the model does not print.
 The full plan, with the steps of `cancel`, its validation and its tests, is in the spec under "Deliverable 4 change feature: order cancellation".
 
 ### Built early: prediction against the result
 
-We built cancellation after writing the prediction above and without changing it. Outside the two test classes, which gained new tests and kept their old ones unchanged, every edit is in the four classes listed below.
+We built cancellation after writing the prediction above and without changing it. Outside the two test classes, every edit is in the four classes listed below.
 
 | Predicted | What happened |
 |---|---|
@@ -151,7 +151,7 @@ We built cancellation after writing the prediction above and without changing it
 | `OrderBook` adds `cancel`, `getBids(int)`, `getAsks(int)` | As predicted, plus two private helpers: `findWaiting`, which scans both sides for an order ID, and `onlyTrader`, which filters a list by trader. Neither is visible outside the class. |
 | `OrderController` changes `run` and `handle` | As predicted. One more change: `OrderController` now imports `model.Order`, because it reads the shares cancelled from the `Order` that `cancel` returns. Before this the controller used only `OrderBook` and `Side`. Both are model classes, so the controller still talks only to the model and the view. |
 | `ConsoleView` adds `showMessage` | As predicted. |
-| No change to `submit`, `getBids()`, `getAsks()`, `getTrades()`, the five other queue methods, `ask`, `showBook`, `showTrades`, `showError`, `Order`, `Trade`, `Side`, `ModelDriver` or any existing test | Held for every row. The 27 tests written before cancellation pass unchanged. |
+| No change to `submit`, `getBids()`, `getAsks()`, `getTrades()`, the five other queue methods, `ask`, `showBook`, `showTrades`, `showError`, `Order`, `Trade`, `Side`, `ModelDriver` | Held for every row. |
 
 The tests also go beyond the plan in two places. `cancelClearsSelfTradeBlock` checks that a cancelled order no longer blocks its trader as a self-trade; this is the bug lazy removal would have caused. `removeMissingItem` also calls `remove` on an empty queue.
 
