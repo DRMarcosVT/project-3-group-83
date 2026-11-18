@@ -61,7 +61,7 @@ public class ConsoleView {
      * Prints the trade log.
      *
      * @param trades
-     *            every trade so far, oldest first
+     *            the trades to print, oldest first
      */
     public void showTrades(ArrayList<Trade> trades) {
         System.out.println("Trades (oldest first)");

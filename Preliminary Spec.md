@@ -2,7 +2,7 @@
 
 Project Name: No Cutting!
 
-Revised November 11, 2026, after Deliverable 2. Traders and orders are now identified by `int` IDs, the controller reads commands, and the order-cancellation change feature for Deliverable 4 is specified at the end. Each change is listed under "Revised after Deliverable 2". The Deliverable 2 text is in git at commit `e55516d`. Riya and Raghul have not yet reviewed these revisions; integration rule 1 below requires all three of us to agree before they are final.
+Revised November 11, 2026, after Deliverable 2. Traders and orders are now identified by `int` IDs, the controller reads commands, and the order-cancellation change feature for Deliverable 4 is specified at the end. Each change is listed under "Revised after Deliverable 2". Revised again November 18, 2026, after Deliverable 3: the quantity check before the price prompt, the shortened trade log and the controller tests, listed under "Revised after Deliverable 3". The Deliverable 2 text is in git at commit `e55516d`. Riya and Raghul have not yet reviewed these revisions; integration rule 1 below requires all three of us to agree before they are final.
 
 ## Class design, split by role
 
@@ -20,11 +20,16 @@ Revised November 11, 2026, after Deliverable 2. Traders and orders are now ident
 
 ## System diagram
 
-Arrows run from the class that holds the reference to the class it uses, and each label says what moves along it. The only arrows that cross a package line start at `OrderController`, plus the dashed ones where `ConsoleView` reads `Order`, `Trade` and `Side`.
+Arrows run from the class that holds the reference to the class it uses, and each label says what moves along it. The only arrows that cross a package line start at `OrderController` or `ModelDriver`, plus the dashed ones where `ConsoleView` reads `Order`, `Trade` and `Side`. `ModelDriver` runs the model with no view or controller; it was added in Deliverable 3.
 
 ```mermaid
 classDiagram
     direction TB
+    namespace driver {
+        class ModelDriver {
+            +main(String[] args) void$
+        }
+    }
     namespace view {
         class ConsoleView {
             -Scanner in
@@ -32,6 +37,7 @@ classDiagram
             +showBook(ArrayList~Order~ bids, ArrayList~Order~ asks) void
             +showTrades(ArrayList~Trade~ trades) void
             +showError(String message) void
+            +showMessage(String message) void
         }
     }
     namespace controller {
@@ -52,8 +58,11 @@ classDiagram
             +int MAX_QUANTITY$
             +int MAX_PRICE$
             +submit(int traderId, Side side, int quantity, int price) int
+            +cancel(int traderId, int orderId) Order
             +getBids() ArrayList~Order~
             +getAsks() ArrayList~Order~
+            +getBids(int traderId) ArrayList~Order~
+            +getAsks(int traderId) ArrayList~Order~
             +getTrades() ArrayList~Trade~
         }
         class LinkedQueue~T~ {
@@ -63,6 +72,7 @@ classDiagram
             +dequeue() T
             +peek() T
             +isEmpty() boolean
+            +remove(T item) boolean
             +toList() ArrayList~T~
         }
         class Node~T~ {
@@ -98,8 +108,12 @@ classDiagram
             SELL
         }
     }
-    OrderController --> ConsoleView : sends lists and error text, gets typed lines back from ask
-    OrderController --> OrderBook : sends one order to submit, gets its order ID and lists back, or an IllegalArgumentException
+    OrderController --> ConsoleView : sends lists, messages and error text, gets typed lines back from ask
+    OrderController --> OrderBook : sends one order to submit or one order ID to cancel, gets an order ID, the cancelled Order and lists back, or an IllegalArgumentException
+    ModelDriver --> OrderBook : sends a fixed list of orders to submit, gets order IDs and lists back, or an IllegalArgumentException
+    ModelDriver ..> Order : reads getters
+    ModelDriver ..> Trade : reads getters
+    ModelDriver ..> Side : passes BUY or SELL to submit
     ConsoleView ..> Order : reads getters
     ConsoleView ..> Trade : reads getters
     ConsoleView ..> Side : prints BUY or SELL
@@ -216,6 +230,7 @@ A rejected input never changes the book. For every row below the user sees a mes
 | Quantity or price of 0 | `OrderBook.submit` | Throws `IllegalArgumentException`; `run` catches it and calls `showError`. | `submit` is the only way into the book, so one method guards it for the console, a GUI and JUnit. |
 | Negative quantity or price | `OrderBook.submit` | Same. | Same. |
 | Quantity or price above the max (10,000) | `OrderBook.submit` | Same. | Same. A number too big for an `int` is caught earlier, as text. |
+| Quantity of 0, negative or above 10,000, typed at the console (added after Deliverable 3) | `OrderController.handle`, right after the quantity is typed | `showError`; the price is never asked for and `submit` is never called. | You should not be asked to price an order that cannot be sent. `submit` keeps its own check for JUnit and any other caller. |
 | Trader ID of 0 or negative (this replaces the scope's blank trader name, since a trader is now a number) | `OrderBook.submit` | Same. | Same. `run` also rejects it when the ID is typed at startup or after `switch`, so `currentTrader` is never set to it; the check in `submit` covers JUnit and any later caller. |
 | Self-trade: the trader already has a waiting order on the other side at a price the new order matches | `OrderBook.submit` | Same. Checked before any matching starts. | Only the book knows which orders are waiting. |
 | Text ("ten") for quantity, price or a trader ID | `OrderController.run`, when `Integer.parseInt` fails | `run` calls `showError`; `submit` is never called and `currentTrader` is unchanged. | `submit` takes an `int`, so text has to become a number before the model is called. Reading typed text is the controller's job. |
@@ -242,6 +257,25 @@ A rejected input never changes the book. For every row below the user sees a mes
 | `getAsks` | Trader 1 SELL at 27, trader 2 SELL at 25, trader 3 SELL at 25. Returns the orders of traders 2, 3, 1 in that order. | On an empty book, returns an empty list. Clearing the returned list leaves the next `getAsks()` unchanged. |
 | `getTrades` | After the price-first case above, returns its three trades, oldest first. | On a new book, returns an empty list. Clearing the returned list leaves the next `getTrades()` unchanged. |
 | `Order` and `Trade` getters | Checked by every `submit` case above that reads an order ID, trader ID, price or share count. | They take no input. |
+
+### Controller tests (added after Deliverable 3)
+
+`OrderControllerTest` checks the bad input the controller catches, which no model test can reach. It runs whole command sessions through `OrderController.run()` with `FakeView`, a subclass of `ConsoleView` declared inside the test file. `FakeView` overrides all five public `ConsoleView` methods: `ask` returns the next line from a fixed list, or `null` when the list runs out, as the real `ask` does when the input ends; `showBook`, `showTrades`, `showError` and `showMessage` record what they are handed. Each test then checks the recorded errors and messages and the state of the `OrderBook` it passed in. Nothing is typed and nothing is printed, and `OrderController` and `ConsoleView` need no change for it.
+
+We chose this over making `parseNumber`, `parseSide` and `parseTraderId` package-private and static, because the fake view needs no change to production code and also reaches the checks inside `handle` (`cancel` and `switch` with the wrong number of words) and the end-of-input path.
+
+| Behavior | Normal case and expected result | Bad-input case and expected result |
+|---|---|---|
+| Starting trader ID | `1` is accepted; the first order belongs to trader 1. `quit` at this prompt ends the program. | `ten`, `0`, `-4` and a blank line give four errors; the next valid ID is used. |
+| `buy` / `sell` | Trader 1 SELL 100 at 25, trader 2 BUY 40 at 25: one trade, buyer 2, seller 1, 40 shares. | Quantity `0`, `-5`, `10001`, `ten`, `99999999999` each give an error and the price prompt never appears. Price `0`, `-5`, `10001`, `10.5` each give an error. A self-trade gives an error. The book is unchanged after each. |
+| Commands | | `hold`, a blank line and `BUY SELL` each give a "not a command" error. |
+| `switch <id>` | `switch 2`, then an order: it belongs to trader 2. | `switch`, `switch two`, `switch 0`, `switch -1`, `switch 2 3` give five errors; the next order still belongs to trader 1. |
+| `cancel <id>` | `cancel 1` on trader 1's waiting order removes it and reports "Cancelled order #1, 100 shares unfilled." | `cancel`, `cancel two`, `cancel 1 2` give three errors. Trader 2's `cancel 1` and `cancel 99` show the book's "belongs to another trader" and "does not exist" errors. The order stays. |
+| `mine` | The view is handed only the current trader's orders. | |
+| End of input | Input ending after a complete order: `run` returns and the order stays. | Input ending after `buy 10`: one "input ended" error, no order. |
+| Trade log | One trade: the view gets the whole log and no "Showing the newest" line. | Seven trades: the view gets the newest five, oldest first, and "Showing the newest 5 of 7 trades." The book keeps all seven. |
+
+`FakeView` relies on `ConsoleView` not being `final` and on its constructor opening a `Scanner` without reading from it. If either changes, the test stops compiling or waits for keyboard input; a `View` interface that both `ConsoleView` and `FakeView` implement would remove that reliance.
 
 ## Division of work
 
@@ -277,6 +311,14 @@ How we integrate:
 | `OrderController` holds `currentTrader`, asked for once at startup, and `run` reads commands (`buy`, `sell`, `switch <id>`, `quit`) in place of asking for trader, side, quantity and price every time. | "My orders" and the ownership check need a trader ID before the first command. Self-trades are blocked, so a user who could never change ID could never get a fill when typing both sides by hand. | Setting the ID before the first command: Marcos's own reflection. Keeping it in the controller and adding `switch`: GenAI (Claude), accepted by Marcos. | `run` gains a small command parser. The model holds no "who is typing" state, so JUnit can act as any number of traders. |
 | `ConsoleView.ask` returns `null` when the input has ended, and `run` treats that as `quit`. | Running the first prototype with input piped from a file that did not end in `quit` crashed with `NoSuchElementException` from `Scanner.nextLine`. | Found while running the prototype on November 11 | One `hasNextLine` check in the view and one `null` check in the controller. |
 | Order cancellation moves from a stretch goal to the Deliverable 4 change feature, specified in the next section. | Deliverable 4 requires one feature that is not in the MVP, adds model logic, and is reachable through the controller and view. | Marcos chose it from the scope's stretch goals after comparing them with GenAI (Claude). | `LinkedQueue` gains `remove`, which takes an item from the middle of the queue. The scope said nothing would do that. |
+
+### Revised after Deliverable 3
+
+| What changed since Deliverable 3 | Why | Came from | Cost or saving in the build |
+|---|---|---|---|
+| `OrderController.handle` rejects a quantity of 0, a negative one or one above 10,000 before asking for the price. | You should not be asked to price an order that cannot be sent. | Deliverable 3 Next Steps | One check in `handle`; three price lines removed from `demo/bad-input-session.txt`, which the controller would otherwise read as commands. |
+| After each order or cancel, the controller hands `showTrades` the newest five trades and says how many it left out. | The whole log scrolled the book off the screen in long sessions. | Deliverable 3 Next Steps | One private method in `OrderController`. `ConsoleView` and `OrderBook` are unchanged; the book still keeps every trade. |
+| A third test class, `OrderControllerTest`, drives the controller through a `ConsoleView` subclass. See "Controller tests" under Test plan. | The Deliverable 4 rubric asks for a test for each bad-input case, and the controller's checks were reachable only through the keyboard. | Marcos chose it after comparing it with making the parse methods package-private, with GenAI (Claude) | One test file. No production code changed. |
 
 ## Deliverable 4 change feature: order cancellation
 

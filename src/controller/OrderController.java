@@ -1,8 +1,10 @@
 package controller;
 
+import java.util.ArrayList;
 import model.Order;
 import model.OrderBook;
 import model.Side;
+import model.Trade;
 import view.ConsoleView;
 
 /**
@@ -13,6 +15,9 @@ public class OrderController {
 
     private static final String COMMANDS =
         "Type buy, sell, cancel <order ID>, mine, switch <trader ID> or quit.";
+
+    /** How many of the newest trades are printed after each order or cancel. */
+    private static final int TRADES_SHOWN = 5;
 
     private final OrderBook book;
     private final ConsoleView view;
@@ -119,7 +124,7 @@ public class OrderController {
                 view.showMessage("Cancelled order #" + orderId + ", "
                     + cancelled.getRemaining() + " shares unfilled.");
                 view.showBook(book.getBids(), book.getAsks());
-                view.showTrades(book.getTrades());
+                showRecentTrades();
             }
             else if (text.equalsIgnoreCase("mine")) {
                 view.showBook(book.getBids(currentTrader), book.getAsks(
@@ -128,18 +133,44 @@ public class OrderController {
             else {
                 Side side = parseSide(text);
                 int quantity = parseNumber(view.ask("quantity: "), "Quantity");
+                // Reject a bad quantity before asking for a price, so the
+                // user is never asked to price an order that cannot be sent.
+                // submit runs the same check, so the model stays safe for
+                // callers that skip this one.
+                if (quantity < 1 || quantity > OrderBook.MAX_QUANTITY) {
+                    throw new IllegalArgumentException(
+                        "Quantity must be from 1 to " + OrderBook.MAX_QUANTITY
+                            + ", got " + quantity + ".");
+                }
                 int price = parseNumber(view.ask("price in whole dollars: "),
                     "Price");
                 int orderId = book.submit(currentTrader, side, quantity,
                     price);
                 view.showMessage("Order #" + orderId + " placed.");
                 view.showBook(book.getBids(), book.getAsks());
-                view.showTrades(book.getTrades());
+                showRecentTrades();
             }
         }
         catch (IllegalArgumentException e) {
             view.showError(e.getMessage());
         }
+    }
+
+
+    /**
+     * Prints the newest trades, at most TRADES_SHOWN of them, oldest first.
+     * The book still keeps every trade; only the printed list is cut.
+     */
+    private void showRecentTrades() {
+        ArrayList<Trade> trades = book.getTrades();
+        int total = trades.size();
+        if (total > TRADES_SHOWN) {
+            view.showMessage("Showing the newest " + TRADES_SHOWN + " of "
+                + total + " trades.");
+            trades = new ArrayList<Trade>(trades.subList(total - TRADES_SHOWN,
+                total));
+        }
+        view.showTrades(trades);
     }
 
 

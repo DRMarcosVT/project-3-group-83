@@ -88,6 +88,27 @@ public class LinkedQueueTest {
 
 
     /**
+     * Enqueues and dequeues taken in turns, with two items held most of the
+     * time, still come out in arrival order. This fails if dequeue moves head
+     * wrongly while the queue is not empty, or if enqueue links a new item
+     * anywhere but after the current tail.
+     */
+    @Test
+    public void interleavedEnqueueDequeue() {
+        queue.enqueue("a");
+        queue.enqueue("b");
+        assertEquals("a", queue.dequeue());
+        queue.enqueue("c");
+        assertEquals("b", queue.dequeue());
+        queue.enqueue("d");
+        assertEquals(Arrays.asList("c", "d"), queue.toList());
+        assertEquals("c", queue.dequeue());
+        assertEquals("d", queue.dequeue());
+        assertTrue(queue.isEmpty());
+    }
+
+
+    /**
      * peek returns the head and leaves it in place.
      */
     @Test
