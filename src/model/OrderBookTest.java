@@ -433,6 +433,32 @@ public class OrderBookTest {
 
 
     /**
+     * getBids(traderId) with an ID no trader can have (0 or negative) gives
+     * an empty list instead of throwing, and leaves the book unchanged.
+     */
+    @Test
+    public void getBidsForImpossibleTraderId() {
+        book.submit(1, Side.BUY, 10, 24);
+        assertTrue(book.getBids(0).isEmpty());
+        assertTrue(book.getBids(-1).isEmpty());
+        assertEquals(1, book.getBids().size());
+    }
+
+
+    /**
+     * getAsks(traderId) with an ID no trader can have (0 or negative) gives
+     * an empty list instead of throwing, and leaves the book unchanged.
+     */
+    @Test
+    public void getAsksForImpossibleTraderId() {
+        book.submit(1, Side.SELL, 10, 25);
+        assertTrue(book.getAsks(0).isEmpty());
+        assertTrue(book.getAsks(-1).isEmpty());
+        assertEquals(1, book.getAsks().size());
+    }
+
+
+    /**
      * Checks that one order is rejected.
      */
     private void assertRejected(int trader, Side side, int quantity,
