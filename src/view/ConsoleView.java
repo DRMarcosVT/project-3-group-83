@@ -6,11 +6,12 @@ import model.Order;
 import model.Trade;
 
 /**
- * The console view. It prints what the controller hands it and returns what
- * the user types. It holds no reference to the order book and reads orders
- * and trades only through their getters.
+ * The console view, which implements View for the terminal. It prints what
+ * the controller hands it and returns what the user types. It holds no
+ * reference to the order book and reads orders and trades only through their
+ * getters.
  */
-public class ConsoleView {
+public class ConsoleView implements View {
 
     private final Scanner in;
 

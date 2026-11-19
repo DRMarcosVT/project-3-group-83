@@ -6,6 +6,7 @@ import model.OrderBook;
 import model.Side;
 import model.Trade;
 import view.ConsoleView;
+import view.View;
 
 /**
  * The controller. It remembers which trader is typing, turns typed commands
@@ -20,7 +21,7 @@ public class OrderController {
     private static final int TRADES_SHOWN = 5;
 
     private final OrderBook book;
-    private final ConsoleView view;
+    private final View view;
     private int currentTrader;
 
     /**
@@ -29,9 +30,9 @@ public class OrderController {
      * @param book
      *            the order book
      * @param view
-     *            the console view
+     *            the view to read from and show on
      */
-    public OrderController(OrderBook book, ConsoleView view) {
+    public OrderController(OrderBook book, View view) {
         this.book = book;
         this.view = view;
         this.currentTrader = 0;

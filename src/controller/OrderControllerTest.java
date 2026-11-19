@@ -11,7 +11,7 @@ import model.OrderBook;
 import model.Trade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import view.ConsoleView;
+import view.View;
 
 /**
  * Tests the bad input OrderController catches, by running whole command
@@ -22,12 +22,12 @@ import view.ConsoleView;
 public class OrderControllerTest {
 
     /**
-     * A ConsoleView that reads from a list of lines in place of the keyboard
-     * and records every prompt, error, message, book and trade list in place
-     * of printing them. Its constructor still runs ConsoleView's, which opens
-     * a Scanner on System.in, but no method here reads from it.
+     * A View that reads from a list of lines in place of the keyboard and
+     * records every prompt, error, message, book and trade list in place of
+     * printing them. It shares no code with ConsoleView and never touches
+     * System.in.
      */
-    private static class FakeView extends ConsoleView {
+    private static class FakeView implements View {
 
         private final ArrayList<String> lines;
         private int next;

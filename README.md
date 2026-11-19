@@ -69,14 +69,14 @@ java -jar lib\junit-platform-console-standalone-1.10.2.jar execute --class-path 
 
 Expected: 64 tests successful, 0 failed (18 in `LinkedQueueTest`, 29 in `OrderBookTest`, 17 in `OrderControllerTest`).
 
-`LinkedQueueTest` and `OrderBookTest` create only model objects; they never touch `ConsoleView` or `OrderController`. `OrderControllerTest` runs whole command sessions through `OrderController` with a fake view: `FakeView`, a subclass of `ConsoleView` inside the test file, returns typed lines from a list and records every error, message, book and trade list the controller hands it. Nothing is typed at a keyboard and nothing is printed.
+`LinkedQueueTest` and `OrderBookTest` create only model objects; they never touch `ConsoleView` or `OrderController`. `OrderControllerTest` runs whole command sessions through `OrderController` with a fake view: `FakeView`, a class inside the test file that implements `View`, returns typed lines from a list and records every error, message, book and trade list the controller hands it. Nothing is typed at a keyboard and nothing is printed.
 
 ### Where things are
 
 | Path | Role | Contents |
 |---|---|---|
 | `src/model` | Model | `LinkedQueue`, `Side`, `Order`, `Trade`, `OrderBook`, and the two test classes |
-| `src/view` | View | `ConsoleView` |
+| `src/view` | View | `View`, the interface the controller talks to, and `ConsoleView`, which implements it |
 | `src/controller` | Controller | `OrderController`, which holds `main`, and `OrderControllerTest` |
 | `src/driver` | Driver | `ModelDriver` |
 | `demo` | | The four scripted sessions |
@@ -121,13 +121,13 @@ The view learned one thing: how to print a confirmation, `showMessage(String)`. 
 
 The view keeps no copy of model state. `ConsoleView`'s only field is the `Scanner` it reads with; every list it prints is passed in by the controller for that one call and not stored.
 
-One thing in the model is still written for the screen: the messages inside `OrderBook`'s `IllegalArgumentException`s, such as "Order #3 belongs to another trader.", reach the user word for word through `showError`. The model does not call or import the view, but a GUI that wanted different wording would have to map the exceptions itself. The design change below would fix that.
+One thing in the model is still written for the screen: the messages inside `OrderBook`'s `IllegalArgumentException`s, such as "Order #3 belongs to another trader.", reach the user word for word through `showError`. The model does not call or import the view, but a GUI that wanted different wording would have to map the exceptions itself. One exception class per rejection, such as a `NotYourOrderException`, would let each view choose its own wording.
 
 ### What design change would make the next feature cheaper
 
-A `View` interface with `ConsoleView`'s five public methods, and `OrderController` holding a `View` in place of a `ConsoleView`. Today the controller's field is typed `ConsoleView`, so a GUI or a second screen means editing the controller. With the interface, a GUI view is a new class and the controller does not change.
+We have already made the first one. `OrderController` used to hold a `ConsoleView`, so a GUI or a second screen meant editing the controller. It now holds a `view.View`, an interface with `ConsoleView`'s five public methods, so a GUI view is a new class that implements `View` and the controller does not change. `FakeView` in `OrderControllerTest` is the second class to implement it.
 
-A GUI would also need `handle` split: `buy` and `sell` call `view.ask` for the quantity and price in the middle of handling the command, which a button press cannot answer. A method such as `placeOrder(Side side, int quantity, int price)` that the console path and a GUI button both call would remove that.
+The next change would be a `placeOrder(side, quantity, price)` method in `OrderController`, so a GUI button could place an order in one call instead of the controller stopping to ask for the quantity and then the price.
 
 ### What changed from our Deliverable 3 plan
 
@@ -135,16 +135,16 @@ A GUI would also need `handle` split: `buy` and `sell` call `view.ask` for the q
 |---|---|---|
 | Report an out-of-range quantity before asking for the price. | Done in `OrderController.handle`. A quantity of 0, a negative one, or one above 10,000 is rejected before the price prompt; text was already rejected there. `submit` keeps its own check. | You should not be asked to price an order that cannot be sent. |
 | Add the three quantity cases to `demo/bad-input-session.txt`. | The cases were already there; we deleted the price line after each rejected quantity (three lines). | After the fix, the old price line `25` was read as a command and printed "not a command". |
-| Decide whether `showTrades` should print only the newest trades. | After each order or cancel, the controller passes the newest five trades to `showTrades` and prints "Showing the newest 5 of N trades." when it cut any. The book still keeps every trade. `ConsoleView` did not change. | The whole log scrolled the book off the screen in long sessions. Cutting the list in the controller keeps the change out of the view; `OrderController` now imports `model.Trade` and `java.util.ArrayList` to do it. |
+| Decide whether `showTrades` should print only the newest trades. | After each order or cancel, the controller passes the newest five trades to `showTrades` and prints "Showing the newest 5 of N trades." when it cut any. The book still keeps every trade. `ConsoleView`'s code did not change; only the `showTrades` Javadoc was reworded. | The whole log scrolled the book off the screen in long sessions. Cutting the list in the controller keeps the change out of the view; `OrderController` now imports `model.Trade` and `java.util.ArrayList` to do it. |
 | New tests: only the quantity cases in the demo script. | Three more model tests: `interleavedEnqueueDequeue`, `getBidsForImpossibleTraderId`, `getAsksForImpossibleTraderId`. A new test class, `OrderControllerTest`, with 17 tests. | `getBids(int)` had only a normal case, and no test dequeued while two or more items were held. The bad inputs the controller catches were checked only by the demo scripts, which no JUnit run executes. |
-| Nothing planned for how to test the controller. | `OrderControllerTest` drives `OrderController.run()` through `FakeView`, a `ConsoleView` subclass that supplies typed lines from a list and records what it is told to show. `OrderController` and `ConsoleView` did not change. | `parseNumber`, `parseSide` and `parseTraderId` are private, and `run()` reads through a `ConsoleView` that wraps `System.in`, so a test could not reach the controller's checks without faking the keyboard. We also considered making the three parse methods package-private and static and testing them one by one. We chose the fake view because it needs no change to production code and it also reaches the checks that live inside `handle` (`cancel 1 2`, `switch 2 3`) and the end-of-input path, which the parse methods do not. |
+| Nothing planned for how to test the controller. | `OrderControllerTest` drives `OrderController.run()` through `FakeView`, which supplies typed lines from a list and records what it is told to show. `FakeView` was first a `ConsoleView` subclass, so the tests needed no change to production code; it now implements `View` (next row). | `parseNumber`, `parseSide` and `parseTraderId` are private, and `run()` reads through a `ConsoleView` that wraps `System.in`, so a test could not reach the controller's checks without faking the keyboard. We also considered making the three parse methods package-private and static and testing them one by one. We chose the fake view because it needs no change to production code and it also reaches the checks that live inside `handle` (`cancel 1 2`, `switch 2 3`) and the end-of-input path, which the parse methods do not. |
+| Nothing planned: the `View` interface was a final-build idea. | Added `view.View` with `ask`, `showBook`, `showTrades`, `showError` and `showMessage`. `ConsoleView` implements it. `OrderController`'s field and constructor parameter are now typed `View`; `main` still passes a `ConsoleView`. `FakeView` implements `View` in place of extending `ConsoleView`. No method body changed, and the program's output for `demo-session.txt` is identical. | As a subclass, `FakeView` depended on `ConsoleView` staying non-`final` and on its constructor never reading `System.in`. Either change would have stopped the controller tests compiling or left them waiting for keyboard input. It is also the first half of the design change named above. |
 | README ran the tests in Eclipse and the scripts with `Get-Content`. | Every command is for PowerShell, the tests run with the JUnit console runner, and the scripts run through `cmd /c`. | We demo in PowerShell. Piping with `Get-Content` put a byte-order mark before the first line, and the program rejected the first trader ID. |
 | [Placeholder: the review of `LinkedQueue.remove`, `OrderBook.cancel`, `getBids(int)`, `getAsks(int)` and their tests.] | [Placeholder] | [Placeholder] |
 
 ### What doesn't work yet
 
 - Input from a script is not echoed, so several prompts run together on one line. Type the demo live, or read the script alongside the output.
-- `OrderControllerTest` depends on two facts about `ConsoleView`: it is not `final`, and its constructor only opens a `Scanner` without reading from it. If either changes, the test stops compiling or waits for keyboard input. The `View` interface described above would remove that dependency, since `FakeView` would implement `View` in place of extending `ConsoleView`.
 
 ### Bad-input coverage
 
@@ -162,7 +162,7 @@ A GUI would also need `handle` split: `buy` and `sell` call `view.ask` for the q
 | Cancel another trader's order | `OrderBook.cancel` | `cancelRejectsOtherTrader`, `cancelShowsBookErrors`; `cancel-session.txt`; `demo-session.txt` |
 | Text, or the wrong number of words, after `cancel` or `switch` | `OrderController.handle` | `cancelRejectsBadInput`, `switchRejectsBadInput`; `cancel-session.txt`; `bad-input-session.txt` |
 | `getBids(int)` or `getAsks(int)` with trader ID 0 or negative | Returns an empty list | `getBidsForImpossibleTraderId`, `getAsksForImpossibleTraderId` |
-| Input ends before `quit`, or in the middle of an order | `ConsoleView.ask` returns `null`; `run` stops, or `parseNumber` rejects the half-typed order | `inputEndsBeforeQuit`, `inputEndsMidOrder`; `bad-input-session.txt` |
+| Input ends before `quit`, or in the middle of an order | `View.ask` returns `null`; `run` stops, or `parseNumber` rejects the half-typed order | `inputEndsBeforeQuit`, `inputEndsMidOrder`; `bad-input-session.txt` |
 
 Test names in `OrderBookTest` and `LinkedQueueTest` call the model directly. The others are in `OrderControllerTest` and run through `FakeView`.
 
@@ -172,17 +172,16 @@ For the methods that take no input (`getBids()`, `getAsks()`, `getTrades()`, `is
 
 ### What is left for the final build
 
-1. Add a `view.View` interface with `ConsoleView`'s five public methods. `ConsoleView` implements it, `OrderController` stores a `View`, and `FakeView` in `OrderControllerTest` implements `View` in place of extending `ConsoleView`. This is the design change under "What design change would make the next feature cheaper", and it ends the test's dependence on `ConsoleView` staying non-final.
-2. Add volume traded, from stretch goal 3: `OrderBook.getVolume()` sums the shares in `getTrades()`, and a `stats` command in `OrderController.handle` prints it through `showMessage`. It gets a normal test and an empty-book test in `OrderBookTest`. That is one model method and one command, with no change to the view.
-3. Fill in the attribution table and GenAI note; each teammate checks their own rows.
-4. Merge the final build into `main`.
+1. Add volume traded, from stretch goal 3: `OrderBook.getVolume()` sums the shares in `getTrades()`, and a `stats` command in `OrderController.handle` prints it through `showMessage`. It gets a normal test and an empty-book test in `OrderBookTest`. That is one model method and one command, with no change to the view.
+2. Fill in the attribution table and GenAI note; each teammate checks their own rows.
+3. Merge the final build into `main`.
 
 ### Stretch goals
 
 | Stretch goal from the scope | Decision | Reason |
 |---|---|---|
 | 1. Order cancellation | Done. It is the change feature. | |
-| 2. Swing or JavaFX GUI | Dropping. | `OrderController` holds a `ConsoleView` field and its `run` loop blocks on `ask`, so a GUI needs the two changes described under "What design change would make the next feature cheaper" first. |
+| 2. Swing or JavaFX GUI | Dropping. | `OrderController` now talks to a `View` interface, but its `run` loop still blocks on `ask`, so a GUI first needs the `placeOrder` split described under "What design change would make the next feature cheaper". |
 | 3. Stats: volume traded, average wait before a fill | Committing to volume traded; dropping average wait. | Volume is one `OrderBook` method over the trades the book already keeps, printed through the existing `showMessage`. Average wait needs a timestamp on every `Order`. |
 | 4. Market-making model | Dropping. | It needs other traders to trade against, which the program does not have. |
 
@@ -205,10 +204,9 @@ Run `cmd /c "java -cp bin controller.OrderController < demo\demo-session.txt"`, 
 
 | Item | Owner |
 |---|---|
-| 1. `View` interface | Riya Shah (view owner) |
-| 2. Volume traded and the `stats` command | Raghul Jayaprakash |
-| 3. Attribution table and GenAI note | Marcos Salas; each teammate checks their own rows |
-| 4. Merge into `main` | Raghul Jayaprakash (controller owner, who did the first join under integration rule 4 in the spec) |
+| 1. Volume traded and the `stats` command | Raghul Jayaprakash |
+| 2. Attribution table and GenAI note | Marcos Salas; each teammate checks their own rows |
+| 3. Merge into `main` | Raghul Jayaprakash (controller owner, who did the first join under integration rule 4 in the spec) |
 
 ## Attribution
 
@@ -222,6 +220,7 @@ Run `cmd /c "java -cp bin controller.OrderController < demo\demo-session.txt"`, 
 | `model/LinkedQueueTest.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
 | `model/OrderBookTest.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
 | `driver/ModelDriver.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `view/View.java` | Marcos Salas | GenAI-assisted: Claude wrote it at Marcos's direction, along with the matching changes to `ConsoleView`, `OrderController` and `OrderControllerTest` |
 | `view/ConsoleView.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
 | `controller/OrderController.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
 | `controller/OrderControllerTest.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
