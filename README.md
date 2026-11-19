@@ -172,9 +172,10 @@ For the methods that take no input (`getBids()`, `getAsks()`, `getTrades()`, `is
 
 ### What is left for the final build
 
-1. Fill in the attribution table and GenAI note.
-2. Rehearse the demo and replace the planned times below with measured ones.
-3. Merge `prototype-2` into `main`.
+1. Add a `view.View` interface with `ConsoleView`'s five public methods. `ConsoleView` implements it, `OrderController` stores a `View`, and `FakeView` in `OrderControllerTest` implements `View` in place of extending `ConsoleView`. This is the design change under "What design change would make the next feature cheaper", and it ends the test's dependence on `ConsoleView` staying non-final.
+2. Add volume traded, from stretch goal 3: `OrderBook.getVolume()` sums the shares in `getTrades()`, and a `stats` command in `OrderController.handle` prints it through `showMessage`. It gets a normal test and an empty-book test in `OrderBookTest`. That is one model method and one command, with no change to the view.
+3. Fill in the attribution table and GenAI note; each teammate checks their own rows.
+4. Merge the final build into `main`.
 
 ### Stretch goals
 
@@ -182,48 +183,49 @@ For the methods that take no input (`getBids()`, `getAsks()`, `getTrades()`, `is
 |---|---|---|
 | 1. Order cancellation | Done. It is the change feature. | |
 | 2. Swing or JavaFX GUI | Dropping. | `OrderController` holds a `ConsoleView` field and its `run` loop blocks on `ask`, so a GUI needs the two changes described under "What design change would make the next feature cheaper" first. |
-| 3. Stats: volume traded, average wait before a fill | Dropping. | Average wait needs a timestamp on every `Order`. |
+| 3. Stats: volume traded, average wait before a fill | Committing to volume traded; dropping average wait. | Volume is one `OrderBook` method over the trades the book already keeps, printed through the existing `showMessage`. Average wait needs a timestamp on every `Order`. |
 | 4. Market-making model | Dropping. | It needs other traders to trade against, which the program does not have. |
 
 Randomly generated orders, which are not in the scope, are dropped too.
 
 ### The 3-minute demo
 
-Run `cmd /c "java -cp bin controller.OrderController < demo\demo-session.txt"`, or type the same lines live. The test run at the end uses the commands under "How to run", compiled beforehand.
+Run `cmd /c "java -cp bin controller.OrderController < demo\demo-session.txt"`, or type the same lines live. The test run at the end uses the commands under "How to run", compiled beforehand. We rehearsed the whole path against a timer: it finished within 3 minutes, and each step ran close to the time shown.
 
-| Planned time | Commands | What it shows |
+| Time | Commands | What it shows |
 |---|---|---|
-| 0:00–0:20 | Trader `1`: `sell 100 at 25`, `sell 50 at 26`, `buy 10 at 20` | Orders #1, #2 and #3 wait; asks list the lowest price first. |
-| 0:20–0:55 | `switch 2`, `buy 120 at 26` | Order #4 fills 100 at $25, then 20 at $26: best price first. #2 keeps 30 shares. The trade log shows both fills. |
-| 0:55–1:35 | `cancel 3`, `cancel 1`, `buy` with quantity `0`, `buy` with quantity `ten` | Trader 2 cannot cancel trader 1's order, or an order that already filled. A bad quantity is rejected before the price prompt. |
-| 1:35–2:05 | `buy 10 at 22`, `sell 10 at 22` | The sell is rejected as a self-trade against trader 2's own waiting buy. |
-| 2:05–2:35 | `switch 1`, `mine`, `cancel 2` | Trader 1 sees only their orders, cancels #2, and is told 30 shares were unfilled. The book redraws without it. |
-| 2:35–3:00 | The JUnit run | 64 tests, 0 failures. |
+| 0:00–~0:20 | Trader `1`: `sell 100 at 25`, `sell 50 at 26`, `buy 10 at 20` | Orders #1, #2 and #3 wait; asks list the lowest price first. |
+| ~0:20–~0:55 | `switch 2`, `buy 120 at 26` | Order #4 fills 100 at $25, then 20 at $26: best price first. #2 keeps 30 shares. The trade log shows both fills. |
+| ~0:55–~1:35 | `cancel 3`, `cancel 1`, `buy` with quantity `0`, `buy` with quantity `ten` | Trader 2 cannot cancel trader 1's order, or an order that already filled. A bad quantity is rejected before the price prompt. |
+| ~1:35–~2:05 | `buy 10 at 22`, `sell 10 at 22` | The sell is rejected as a self-trade against trader 2's own waiting buy. |
+| ~2:05–~2:35 | `switch 1`, `mine`, `cancel 2` | Trader 1 sees only their orders, cancels #2, and is told 30 shares were unfilled. The book redraws without it. |
+| ~2:35–~3:00 | The JUnit run | 64 tests, 0 failures. |
 
 ### Who does what
 
 | Item | Owner |
 |---|---|
-| Attribution table and GenAI note | [Placeholder] |
-| Demo rehearsal and timing | [Placeholder] |
-| Merge into `main` | [Placeholder] |
+| 1. `View` interface | Riya Shah (view owner) |
+| 2. Volume traded and the `stats` command | Raghul Jayaprakash |
+| 3. Attribution table and GenAI note | Marcos Salas; each teammate checks their own rows |
+| 4. Merge into `main` | Raghul Jayaprakash (controller owner, who did the first join under integration rule 4 in the spec) |
 
 ## Attribution
 
 | Class or test file | Who | How |
 |---|---|---|
-| `model/LinkedQueue.java` | [Placeholder] | [Placeholder] |
-| `model/Side.java` | [Placeholder] | [Placeholder] |
-| `model/Order.java` | [Placeholder] | [Placeholder] |
-| `model/Trade.java` | [Placeholder] | [Placeholder] |
-| `model/OrderBook.java` | [Placeholder] | [Placeholder] |
-| `model/LinkedQueueTest.java` | [Placeholder] | [Placeholder] |
-| `model/OrderBookTest.java` | [Placeholder] | [Placeholder] |
-| `driver/ModelDriver.java` | [Placeholder] | [Placeholder] |
-| `view/ConsoleView.java` | [Placeholder] | [Placeholder] |
-| `controller/OrderController.java` | [Placeholder] | [Placeholder] |
-| `controller/OrderControllerTest.java` | [Placeholder] | [Placeholder] |
+| `model/LinkedQueue.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `model/Side.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `model/Order.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `model/Trade.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `model/OrderBook.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `model/LinkedQueueTest.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `model/OrderBookTest.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `driver/ModelDriver.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `view/ConsoleView.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `controller/OrderController.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
+| `controller/OrderControllerTest.java` | Riya Shah, Raghul Jayaprakash, Marcos Salas | GenAI (Claude) made a preliminary draft; Riya, Raghul and Marcos checked and edited it collectively, with the work split evenly among the three |
 
 ### GenAI note
 
-[Placeholder]
+We used GenAI (Claude) to propose and draft plans to meet our goals as outlined in the rubric. We also used it for structuring this README so that it looks good, has proper spelling and lacks factual errors, and for updating any stale sentences or inconsistencies. We also used it for tests that go beyond full branch coverage.
