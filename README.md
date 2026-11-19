@@ -115,13 +115,7 @@ The feature and the base prototype are in one commit, `4e78316`, so `git diff` c
 
 ### Did the change cross the model/view line?
 
-Each edit stayed inside its own role. The model decides whether a cancel is allowed and removes the order; the controller reads the command and picks whose orders to ask for; the view prints what it is handed.
-
-The view learned one thing: how to print a confirmation, `showMessage(String)`. It did not learn how the book stores orders. `mine` passes the filtered lists from `getBids(int)` and `getAsks(int)` to the existing `showBook`, so the view prints one trader's orders with the same code that prints everyone's.
-
-The view keeps no copy of model state. `ConsoleView`'s only field is the `Scanner` it reads with; every list it prints is passed in by the controller for that one call and not stored.
-
-One thing in the model is still written for the screen: the messages inside `OrderBook`'s `IllegalArgumentException`s, such as "Order #3 belongs to another trader.", reach the user word for word through `showError`. The model does not call or import the view, but a GUI that wanted different wording would have to map the exceptions itself. One exception class per rejection, such as a `NotYourOrderException`, would let each view choose its own wording.
+The view gained one method, `showMessage(String)`, and `mine` reuses the existing `showBook` by handing it the lists from `getBids(int)` and `getAsks(int)`, so the view never learned how `OrderBook` stores orders. The view keeps no copy of model state: `ConsoleView`'s only field is its `Scanner`, and each list it prints is passed in by the controller for that one call. The model's error text does reach the screen unchanged, since `OrderBook`'s `IllegalArgumentException` messages, such as "Order #3 belongs to another trader.", go straight to `showError`; one exception class per rejection, such as `NotYourOrderException`, would let a GUI choose its own wording.
 
 ### What design change would make the next feature cheaper
 
