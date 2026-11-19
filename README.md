@@ -127,7 +127,12 @@ One thing in the model is still written for the screen: the messages inside `Ord
 
 We have already made the first one. `OrderController` used to hold a `ConsoleView`, so a GUI or a second screen meant editing the controller. It now holds a `view.View`, an interface with `ConsoleView`'s five public methods, so a GUI view is a new class that implements `View` and the controller does not change. `FakeView` in `OrderControllerTest` is the second class to implement it.
 
-The next change would be a `placeOrder(side, quantity, price)` method in `OrderController`, so a GUI button could place an order in one call instead of the controller stopping to ask for the quantity and then the price. The model already takes an order in one call, `OrderBook.submit(traderId, side, quantity, price)`; what is missing is a controller method that does what `handle` does after reading the quantity and price (the quantity check, the call to `submit`, and redrawing the book and trades), so the console and a GUI could share it.
+The next change is a `placeOrder` method in `OrderController`. Today, when you type `buy`, the program stops and asks you to type a quantity and a price. A GUI cannot answer those typed questions, because its user fills in boxes and clicks a button instead. `placeOrder` would take the side, quantity and price directly, so nothing gets asked:
+
+```java
+placeOrder(Side.BUY, 100, 25);   // the Buy button calls this
+placeOrder(Side.SELL, 100, 25);  // the Sell button calls this
+```
 
 ### What changed from our Deliverable 3 plan
 
